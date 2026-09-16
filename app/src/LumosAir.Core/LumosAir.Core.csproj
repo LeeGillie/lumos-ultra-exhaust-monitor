@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- No NuGet dependencies on purpose: builds offline with just the .NET SDK. -->
+  <PropertyGroup>
+    <TargetFramework>$(AppTfm)</TargetFramework>
+    <RootNamespace>LumosAir.Core</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="LumosAir.Tests" />
+  </ItemGroup>
+</Project>

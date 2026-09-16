@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <!-- Override on the command line with -p:AppTfm=net8.0 if you only have the .NET 8 SDK -->
+    <AppTfm Condition="'$(AppTfm)' == ''">net9.0</AppTfm>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <RollForward>Major</RollForward>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>$(AppTfm)</TargetFramework>
+    <AssemblyName>lumosair</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LumosAir.Core\LumosAir.Core.csproj" />
+  </ItemGroup>
+</Project>

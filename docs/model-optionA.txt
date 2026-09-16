@@ -1,0 +1,34 @@
+Lumos Ultra exhaust – Option A (4" section)   air density 1.120 kg/m³
+Cyclone: 4" round inlet, K=6
+
+Lvl   CFM  3"out fpm  cycIn fpm  4" fpm  6" fpm  cycΔP Pa  totalΔP Pa  d50 brass µm  d50 wood µm
+  1    14        279        157     157      70         2           4           8.3         24.2
+  2    28        566        318     318     142         9          17           5.8         17.0
+  3    42        854        481     481     214        20          38           4.7         13.8
+  4    56       1143        643     643     286        36          68           4.1         12.0
+  5    70       1433        806     806     358        56         106           3.7         10.7
+  6    85       1723        969     969     431        81         153           3.3          9.8
+  7    99       2013       1132    1132     503       111         208           3.1          9.0
+  8   113       2303       1295    1295     576       146         272           2.9          8.4
+  9   127       2594       1459    1459     648       185         344           2.7          7.9
+ 10   142       2884       1622    1622     721       228         425           2.6          7.5
+
+Loss breakdown at level 10 (142 CFM):
+  Lumos Ultra enclosure (air inlets)        18.8 Pa  (0.08 inWC)
+  Lumos 3" exhaust outlet                   60.1 Pa  (0.24 inWC)
+  3"→4" adapter                             36.1 Pa  (0.14 inWC)
+  Cyclone separator                        228.2 Pa  (0.92 inWC)
+  4" smooth pipe (5 ft, pitot)              13.5 Pa  (0.05 inWC)
+  4"→6" adapter                              9.5 Pa  (0.04 inWC)
+  6" flex run (30 ft)                       42.6 Pa  (0.17 inWC)
+  CLOUDLINE S6                               0.0 Pa  (0.00 inWC)
+  6" to wall (1 ft)                          0.9 Pa  (0.00 inWC)
+  Wall cap / damper                         15.0 Pa  (0.06 inWC)
+
+Predicted sensor readings at level 10:
+  laser/cyc_dp   Cyclone ΔP                    228.2 Pa
+  laser/bin      Dust-bin suction              267.1 Pa
+  laser/pitot    Pitot velocity pressure        47.0 Pa
+  laser/run_in   Run-start suction             373.7 Pa
+  laser/encl     Enclosure suction              18.8 Pa
+  fan/fan_in   Fan-inlet suction             416.3 Pa

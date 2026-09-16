@@ -1,0 +1,12 @@
+Item,Qty,Where used,Approx unit price USD (Sept 2026 - verify),Notes
+ESP32-WROOM-32 DevKit,2,laser node + fan node,8-12,Any ESP32 DevKit V1 style board
+Sensirion SDP810-500Pa,3,"cyc_dp, pitot, encl",35-50,Tube-connected I2C 0x25; DigiKey 6605489
+CFSensor XGZP6897D +/-1 kPa (I2C),3,"bin, run_in, fan_in",8-15,I2C 0x6D; K=4096 for 1 kPa range
+TCA9548A I2C multiplexer breakout,1,laser node,5-8,Needed because sensors share fixed addresses
+BME280 breakout (I2C),1,laser node,5-10,Air density correction
+Pitot-static (Prandtl) probe short insertion,1,4-inch measuring section,25-80,Stainless; calibrate with a traverse
+Silicone tubing 3/16 in ID,10 m,sensor to taps,10,
+Barbed tap fittings / printed tap saddles,8,wall taps,10,Deburr holes inside the duct
+4-inch smooth metal pipe 5 ft + couplers + foil tape,1,measuring section (Option A),20-30,Ground it
+Enclosure + USB 5V supply + leads,2,nodes,15 each,
+Cyclone separator (steel) + sealed 20-30 gal drum,1,separator,400-600,See DESIGN.md section 4 before choosing

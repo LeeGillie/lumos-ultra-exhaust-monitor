@@ -1,0 +1,344 @@
+{
+  "name": "Lumos Ultra exhaust – Option B (straight to 6\")",
+  "air": {
+    "temperatureC": 20,
+    "relativeHumidity": 40,
+    "pressurePa": 94600
+  },
+  "activeProfileId": "metal",
+  "profiles": [
+    {
+      "id": "metal",
+      "name": "Metal – fiber (brass, steel, aluminium)",
+      "particleDensity": 8500,
+      "minPreSeparatorFpm": 3500,
+      "minPostSeparatorFpm": 500,
+      "targetCutSizeMicron": 5,
+      "minEnclosureSuctionPa": 3
+    },
+    {
+      "id": "organic",
+      "name": "Organic – UV (wood, leather, acrylic, paper)",
+      "particleDensity": 1000,
+      "minPreSeparatorFpm": 2000,
+      "minPostSeparatorFpm": 500,
+      "targetCutSizeMicron": 10,
+      "minEnclosureSuctionPa": 3
+    },
+    {
+      "id": "coated",
+      "name": "Coated metal / anodized / painted",
+      "particleDensity": 2700,
+      "minPreSeparatorFpm": 3000,
+      "minPostSeparatorFpm": 500,
+      "targetCutSizeMicron": 7,
+      "minEnclosureSuctionPa": 3
+    }
+  ],
+  "elements": [
+    {
+      "id": "enclosure",
+      "name": "Lumos Ultra enclosure (air inlets)",
+      "type": "source",
+      "zone": "preSeparator",
+      "diameterIn": 6,
+      "lengthFt": 0,
+      "flex": false,
+      "flexFactor": 2.5,
+      "roughnessMm": 0.09,
+      "kSum": 2.5
+    },
+    {
+      "id": "outlet3",
+      "name": "Lumos 3\" exhaust outlet",
+      "type": "fitting",
+      "zone": "preSeparator",
+      "diameterIn": 3,
+      "lengthFt": 0,
+      "flex": false,
+      "flexFactor": 2.5,
+      "roughnessMm": 0.09,
+      "kSum": 0.5
+    },
+    {
+      "id": "adapt34",
+      "name": "3\"→4\" adapter",
+      "type": "fitting",
+      "zone": "preSeparator",
+      "diameterIn": 3,
+      "lengthFt": 0,
+      "flex": false,
+      "flexFactor": 2.5,
+      "roughnessMm": 0.09,
+      "kSum": 0.3
+    },
+    {
+      "id": "cyclone",
+      "name": "Cyclone separator",
+      "type": "cyclone",
+      "zone": "separator",
+      "diameterIn": 4,
+      "lengthFt": 0,
+      "flex": false,
+      "flexFactor": 2.5,
+      "roughnessMm": 0.09,
+      "kSum": 0,
+      "cyclone": {
+        "model": "Generic 4\" inlet cyclone",
+        "inletWidthIn": 4,
+        "inletHeightIn": 4,
+        "roundInlet": true,
+        "k": 6,
+        "turns": 5,
+        "binFraction": 0.5,
+        "minInletFpm": 1000,
+        "maxInletFpm": 4500
+      }
+    },
+    {
+      "id": "adapt46",
+      "name": "Cyclone outlet 4\"→6\"",
+      "type": "fitting",
+      "zone": "postSeparator",
+      "diameterIn": 4,
+      "lengthFt": 0,
+      "flex": false,
+      "flexFactor": 2.5,
+      "roughnessMm": 0.09,
+      "kSum": 0.25
+    },
+    {
+      "id": "duct6",
+      "name": "6\" smooth pipe (5 ft, pitot)",
+      "type": "duct",
+      "zone": "postSeparator",
+      "diameterIn": 6,
+      "lengthFt": 5,
+      "flex": false,
+      "flexFactor": 2.5,
+      "roughnessMm": 0.09,
+      "kSum": 0
+    },
+    {
+      "id": "run6",
+      "name": "6\" flex run (30 ft)",
+      "type": "duct",
+      "zone": "postSeparator",
+      "diameterIn": 6,
+      "lengthFt": 30,
+      "flex": true,
+      "flexFactor": 2.5,
+      "roughnessMm": 0.09,
+      "kSum": 2
+    },
+    {
+      "id": "fan",
+      "name": "CLOUDLINE S6",
+      "type": "fan",
+      "zone": "postSeparator",
+      "diameterIn": 6,
+      "lengthFt": 0,
+      "flex": false,
+      "flexFactor": 2.5,
+      "roughnessMm": 0.09,
+      "kSum": 0,
+      "fan": {
+        "model": "AC Infinity CLOUDLINE S6",
+        "curveCfm": [
+          0,
+          100,
+          200,
+          300,
+          350,
+          400,
+          425
+        ],
+        "curvePa": [
+          503,
+          480,
+          420,
+          300,
+          200,
+          80,
+          0
+        ],
+        "levels": 10,
+        "currentLevel": 10
+      }
+    },
+    {
+      "id": "out6",
+      "name": "6\" to wall (1 ft)",
+      "type": "duct",
+      "zone": "postSeparator",
+      "diameterIn": 6,
+      "lengthFt": 1,
+      "flex": true,
+      "flexFactor": 2.5,
+      "roughnessMm": 0.09,
+      "kSum": 0
+    },
+    {
+      "id": "exit",
+      "name": "Wall cap / damper",
+      "type": "exit",
+      "zone": "postSeparator",
+      "diameterIn": 6,
+      "lengthFt": 0,
+      "flex": false,
+      "flexFactor": 2.5,
+      "roughnessMm": 0.09,
+      "kSum": 2
+    }
+  ],
+  "channels": [
+    {
+      "node": "laser",
+      "channel": "cyc_dp",
+      "label": "Cyclone ΔP",
+      "role": "cycloneDp",
+      "highTap": "before:cyclone",
+      "lowTap": "after:cyclone",
+      "profileFactor": 0.9,
+      "fullScalePa": 500
+    },
+    {
+      "node": "laser",
+      "channel": "bin",
+      "label": "Dust-bin suction",
+      "role": "binSuction",
+      "highTap": "room",
+      "lowTap": "bin:cyclone",
+      "profileFactor": 0.9,
+      "fullScalePa": 1000
+    },
+    {
+      "node": "laser",
+      "channel": "pitot",
+      "label": "Pitot velocity pressure",
+      "role": "pitotVp",
+      "highTap": "room",
+      "lowTap": "room",
+      "profileFactor": 0.9,
+      "pitotElementId": "duct6",
+      "fullScalePa": 500
+    },
+    {
+      "node": "laser",
+      "channel": "run_in",
+      "label": "Run-start suction",
+      "role": "runStartSuction",
+      "highTap": "room",
+      "lowTap": "before:run6",
+      "profileFactor": 0.9,
+      "fullScalePa": 1000
+    },
+    {
+      "node": "laser",
+      "channel": "encl",
+      "label": "Enclosure suction",
+      "role": "enclosureSuction",
+      "highTap": "room",
+      "lowTap": "inside:enclosure",
+      "profileFactor": 0.9,
+      "fullScalePa": 500
+    },
+    {
+      "node": "fan",
+      "channel": "fan_in",
+      "label": "Fan-inlet suction",
+      "role": "fanInletSuction",
+      "highTap": "room",
+      "lowTap": "before:fan",
+      "profileFactor": 0.9,
+      "fullScalePa": 1000
+    }
+  ],
+  "thresholds": {
+    "staleSeconds": 5,
+    "persistSeconds": 3,
+    "fanOffSuctionPa": 5,
+    "flowMismatchFraction": 0.2,
+    "driftWarnFraction": 0.3,
+    "driftCriticalFraction": 0.6,
+    "binLeakDropFraction": 0.3,
+    "velocityMargin": 0.1,
+    "smoothingSeconds": 1.5
+  },
+  "transport": {
+    "udpEnabled": true,
+    "udpPort": 47810,
+    "nodeCommandPort": 47811,
+    "mqttEnabled": false,
+    "mqttHost": "homeassistant.local",
+    "mqttPort": 1883,
+    "mqttTopicRoot": "lumosair"
+  },
+  "activeProfile": {
+    "id": "metal",
+    "name": "Metal – fiber (brass, steel, aluminium)",
+    "particleDensity": 8500,
+    "minPreSeparatorFpm": 3500,
+    "minPostSeparatorFpm": 500,
+    "targetCutSizeMicron": 5,
+    "minEnclosureSuctionPa": 3
+  },
+  "fan": {
+    "id": "fan",
+    "name": "CLOUDLINE S6",
+    "type": "fan",
+    "zone": "postSeparator",
+    "diameterIn": 6,
+    "lengthFt": 0,
+    "flex": false,
+    "flexFactor": 2.5,
+    "roughnessMm": 0.09,
+    "kSum": 0,
+    "fan": {
+      "model": "AC Infinity CLOUDLINE S6",
+      "curveCfm": [
+        0,
+        100,
+        200,
+        300,
+        350,
+        400,
+        425
+      ],
+      "curvePa": [
+        503,
+        480,
+        420,
+        300,
+        200,
+        80,
+        0
+      ],
+      "levels": 10,
+      "currentLevel": 10
+    }
+  },
+  "cyclone": {
+    "id": "cyclone",
+    "name": "Cyclone separator",
+    "type": "cyclone",
+    "zone": "separator",
+    "diameterIn": 4,
+    "lengthFt": 0,
+    "flex": false,
+    "flexFactor": 2.5,
+    "roughnessMm": 0.09,
+    "kSum": 0,
+    "cyclone": {
+      "model": "Generic 4\" inlet cyclone",
+      "inletWidthIn": 4,
+      "inletHeightIn": 4,
+      "roundInlet": true,
+      "k": 6,
+      "turns": 5,
+      "binFraction": 0.5,
+      "minInletFpm": 1000,
+      "maxInletFpm": 4500
+    }
+  }
+}

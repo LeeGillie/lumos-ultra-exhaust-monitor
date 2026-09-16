@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 430" font-family="Segoe UI, Arial, sans-serif" font-size="13">
+  <rect width="1100" height="430" fill="#ffffff"/>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#555"/>
+    </marker>
+  </defs>
+  <text x="20" y="28" font-size="17" font-weight="600" fill="#222">LumosAir – exhaust path, sensor taps and data flow (Option A)</text>
+
+  <!-- Laser -->
+  <rect x="20" y="70" width="120" height="80" rx="6" fill="#e8eef5" stroke="#4a6a8a"/>
+  <text x="80" y="105" text-anchor="middle" fill="#222" font-weight="600">Lumos Ultra</text>
+  <text x="80" y="124" text-anchor="middle" fill="#555" font-size="11">3" outlet</text>
+
+  <!-- dirty side -->
+  <rect x="140" y="102" width="50" height="16" fill="#f3d9c6" stroke="#b5764a"/>
+  <text x="165" y="96" text-anchor="middle" fill="#8a4d22" font-size="11">3"→4"</text>
+
+  <!-- Cyclone -->
+  <path d="M190,80 h80 v50 l-25,55 h-30 l-25,-55 z" fill="#f5e6b8" stroke="#9a7a1c"/>
+  <text x="230" y="112" text-anchor="middle" fill="#222" font-weight="600">Cyclone</text>
+  <rect x="200" y="205" width="60" height="55" rx="4" fill="#ddd" stroke="#777"/>
+  <text x="230" y="237" text-anchor="middle" fill="#222" font-size="11">steel drum</text>
+  <line x1="230" y1="185" x2="230" y2="205" stroke="#777" stroke-width="3"/>
+
+  <!-- 4" pipe -->
+  <rect x="270" y="98" width="210" height="24" fill="#dfe8e0" stroke="#5b7c60"/>
+  <text x="360" y="140" text-anchor="middle" fill="#3b5c40" font-size="11">5 ft smooth 4" (measuring section)</text>
+  <!-- pitot -->
+  <path d="M420,110 h-18 M420,110 v-32" stroke="#c0392b" stroke-width="3" fill="none"/>
+
+  <!-- 4->6 -->
+  <path d="M480,98 L510,90 L510,130 L480,122 z" fill="#dfe8e0" stroke="#5b7c60"/>
+  <!-- flex -->
+  <path d="M510,95 h300" stroke="#9aa7b4" stroke-width="30" fill="none" stroke-dasharray="6 3"/>
+  <text x="660" y="140" text-anchor="middle" fill="#445" font-size="11">30 ft 6" flex run</text>
+
+  <!-- Fan -->
+  <circle cx="850" cy="110" r="36" fill="#e6e2f3" stroke="#6a5a9a"/>
+  <text x="850" y="106" text-anchor="middle" fill="#222" font-weight="600">S6</text>
+  <text x="850" y="122" text-anchor="middle" fill="#555" font-size="10">levels 1–10</text>
+  <path d="M886,110 h80" stroke="#9aa7b4" stroke-width="30"/>
+  <rect x="966" y="85" width="22" height="50" fill="#bbb" stroke="#666"/>
+  <text x="1030" y="114" text-anchor="middle" fill="#222">outside</text>
+
+  <!-- tap markers -->
+  <g fill="#c0392b" font-size="11">
+    <circle cx="110" cy="70" r="5"/><text x="110" y="60" text-anchor="middle">encl</text>
+    <circle cx="186" cy="118" r="5"/><text x="178" y="146" text-anchor="end">cyc_dp +</text>
+    <circle cx="276" cy="122" r="5"/><text x="282" y="160">cyc_dp −</text>
+    <circle cx="250" cy="205" r="5"/><text x="268" y="215">bin</text>
+    <circle cx="420" cy="78" r="5"/><text x="420" y="68" text-anchor="middle">pitot</text>
+    <circle cx="520" cy="80" r="5"/><text x="530" y="68">run_in</text>
+    <circle cx="806" cy="80" r="5"/><text x="790" y="68" text-anchor="end">fan_in</text>
+  </g>
+
+  <!-- nodes -->
+  <rect x="300" y="190" width="220" height="80" rx="6" fill="#fff8e6" stroke="#b08a2a"/>
+  <text x="410" y="214" text-anchor="middle" font-weight="600" fill="#222">Laser node (ESP32)</text>
+  <text x="410" y="234" text-anchor="middle" fill="#555" font-size="11">TCA9548A · 3× SDP810 · 2× XGZP6897D</text>
+  <text x="410" y="252" text-anchor="middle" fill="#555" font-size="11">BME280 · tubes to taps</text>
+
+  <rect x="740" y="190" width="200" height="80" rx="6" fill="#fff8e6" stroke="#b08a2a"/>
+  <text x="840" y="214" text-anchor="middle" font-weight="600" fill="#222">Fan node (ESP32)</text>
+  <text x="840" y="234" text-anchor="middle" fill="#555" font-size="11">1× XGZP6897D (fan_in)</text>
+  <text x="840" y="252" text-anchor="middle" fill="#555" font-size="11">(phase 2: UIS fan control)</text>
+
+  <!-- network -->
+  <rect x="470" y="330" width="320" height="80" rx="6" fill="#e8f1fb" stroke="#3b78b5"/>
+  <text x="630" y="356" text-anchor="middle" font-weight="600" fill="#222">LumosAir desktop app (PC)</text>
+  <text x="630" y="376" text-anchor="middle" fill="#555" font-size="11">duct model · live CFM &amp; velocities · diagnostics</text>
+  <text x="630" y="394" text-anchor="middle" fill="#555" font-size="11">fan-level advice · CSV log · simulator</text>
+  <path d="M410,270 L560,328" stroke="#3b78b5" stroke-width="2" marker-end="url(#arr)"/>
+  <path d="M840,270 L700,328" stroke="#3b78b5" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="330" y="310" fill="#3b78b5" font-size="11">Wi-Fi: UDP 47810 broadcast</text>
+  <text x="800" y="310" fill="#3b78b5" font-size="11">or MQTT (Home Assistant)</text>
+
+  <!-- legend -->
+  <rect x="20" y="300" width="14" height="10" fill="#f3d9c6" stroke="#b5764a"/><text x="40" y="309" fill="#444" font-size="11">dirty side – keep as short as possible</text>
+  <rect x="20" y="320" width="14" height="10" fill="#dfe8e0" stroke="#5b7c60"/><text x="40" y="329" fill="#444" font-size="11">clean side (after separator)</text>
+  <circle cx="27" cy="345" r="5" fill="#c0392b"/><text x="40" y="349" fill="#444" font-size="11">pressure tap / probe</text>
+</svg>
