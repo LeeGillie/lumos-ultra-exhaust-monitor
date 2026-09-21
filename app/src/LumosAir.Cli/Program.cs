@@ -14,7 +14,12 @@ SystemConfig LoadConfig()
 {
     var path = Opt("--config");
     if (path is not null) return SystemConfig.Load(path);
-    return (Opt("--option") ?? "A").ToUpperInvariant() == "B" ? DefaultSystems.OptionB() : DefaultSystems.OptionA();
+    return (Opt("--option") ?? "A").ToUpperInvariant() switch
+    {
+        "B" => DefaultSystems.OptionB(),
+        "C" => DefaultSystems.Current(),
+        _ => DefaultSystems.OptionA()
+    };
 }
 
 void ApplyOverrides(SystemConfig cfg)
@@ -144,9 +149,9 @@ switch (cmd)
         Console.WriteLine("""
             lumosair – Lumos Ultra exhaust airflow tool
 
-              lumosair init     [--option A|B] [--out system.json]
-              lumosair model    [--option A|B | --config system.json] [--cyc-k 6] [--cyc-inlet 4] [--flex 2.5] [--series 2] [--no-cyclone] [--need-cfm 200]
-              lumosair simulate [--option A|B] [--level 10] [--fault none|clog|leak|binleak|pitot|outlet|cyclone|lid|slow] [--amount x]
+              lumosair init     [--option A|B|C] [--out system.json]
+              lumosair model    [--option A|B|C | --config system.json] [--cyc-k 6] [--cyc-inlet 4] [--flex 2.5] [--series 2] [--no-cyclone] [--need-cfm 200]
+              lumosair simulate [--option A|B|C] [--level 10] [--fault none|clog|leak|binleak|pitot|outlet|cyclone|lid|slow] [--amount x]
               lumosair listen   [--config system.json] [--udp 47810 | --mqtt host [--user u --pass p]] [--level 10]
             """);
         break;

@@ -19,7 +19,7 @@ Loss breakdown at level 10 (143 CFM):
   3"→4" adapter                             37.0 Pa  (0.15 inWC)
   Cyclone separator                        234.1 Pa  (0.94 inWC)
   Cyclone outlet 4"→6"                       9.8 Pa  (0.04 inWC)
-  6" smooth pipe (5 ft, pitot)               1.9 Pa  (0.01 inWC)
+  6" rigid measuring spool (5 ft, pitot)     1.9 Pa  (0.01 inWC)
   6" flex run (30 ft)                       43.6 Pa  (0.18 inWC)
   CLOUDLINE S6                               0.0 Pa  (0.00 inWC)
   6" to wall (1 ft)                          0.9 Pa  (0.00 inWC)

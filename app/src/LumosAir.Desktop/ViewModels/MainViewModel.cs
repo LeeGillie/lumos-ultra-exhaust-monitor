@@ -48,7 +48,17 @@ public sealed class ChannelRow
 public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 {
     public static readonly string DataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LumosAir");
-    public static string ConfigPath => Path.Combine(DataDir, "system.json");
+
+    /// <summary>System description to load. Override on the command line with: LumosAir.exe --config path\to\system.json</summary>
+    public static string ConfigPath
+    {
+        get
+        {
+            var args = Environment.GetCommandLineArgs();
+            int i = Array.IndexOf(args, "--config");
+            return i >= 0 && i + 1 < args.Length ? args[i + 1] : Path.Combine(DataDir, "system.json");
+        }
+    }
     public static string BaselinePath => Path.Combine(DataDir, "baseline.json");
     public static string LogPath => Path.Combine(DataDir, $"log-{DateTime.Now:yyyyMMdd}.csv");
 

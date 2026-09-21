@@ -18,7 +18,7 @@ Loss breakdown at level 10 (142 CFM):
   Lumos 3" exhaust outlet                   60.1 Pa  (0.24 inWC)
   3"→4" adapter                             36.1 Pa  (0.14 inWC)
   Cyclone separator                        228.2 Pa  (0.92 inWC)
-  4" smooth pipe (5 ft, pitot)              13.5 Pa  (0.05 inWC)
+  4" rigid measuring spool (5 ft, pitot)    13.5 Pa  (0.05 inWC)
   4"→6" adapter                              9.5 Pa  (0.04 inWC)
   6" flex run (30 ft)                       42.6 Pa  (0.17 inWC)
   CLOUDLINE S6                               0.0 Pa  (0.00 inWC)

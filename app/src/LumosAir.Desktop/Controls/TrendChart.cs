@@ -31,17 +31,19 @@ public sealed class TrendChart : FrameworkElement
         var pts = all.Where(p => p.t >= start).ToList();
 
         double maxA = NiceMax(pts.Count == 0 ? 100 : pts.Max(p => p.a));
-        double maxB = NiceMax(pts.Count == 0 ? 2000 : pts.Max(p => p.b));
+        // Series B (cyclone inlet) is absent in systems with no separator — hide it rather than drawing a flat zero.
+        bool hasB = pts.Any(p => p.b > 0);
+        double maxB = NiceMax(!hasB || pts.Count == 0 ? 2000 : pts.Max(p => p.b));
 
         for (int i = 0; i <= 4; i++)
         {
             double y = plot.Bottom - plot.Height * i / 4;
             dc.DrawLine(GridPen, new Point(plot.Left, y), new Point(plot.Right, y));
             Text(dc, (maxA * i / 4).ToString("0"), new Point(plot.Left - 6, y - 7), PenA.Brush, TextAlignment.Right);
-            Text(dc, (maxB * i / 4).ToString("0"), new Point(plot.Right + 6, y - 7), PenB.Brush, TextAlignment.Left);
+            if (hasB) Text(dc, (maxB * i / 4).ToString("0"), new Point(plot.Right + 6, y - 7), PenB.Brush, TextAlignment.Left);
         }
         Text(dc, SeriesA, new Point(plot.Left, 2), PenA.Brush, TextAlignment.Left);
-        Text(dc, SeriesB, new Point(plot.Right, 2), PenB.Brush, TextAlignment.Right);
+        if (hasB) Text(dc, SeriesB, new Point(plot.Right, 2), PenB.Brush, TextAlignment.Right);
         Text(dc, Window.TotalMinutes >= 1 ? $"−{Window.TotalMinutes:0} min" : $"−{Window.TotalSeconds:0} s", new Point(plot.Left, plot.Bottom + 3), AxisBrush, TextAlignment.Left);
         Text(dc, "now", new Point(plot.Right, plot.Bottom + 3), AxisBrush, TextAlignment.Right);
 
@@ -49,7 +51,7 @@ public sealed class TrendChart : FrameworkElement
         Point Map(DateTime t, double v, double max) => new(
             plot.Left + plot.Width * (t - start).TotalSeconds / Window.TotalSeconds,
             plot.Bottom - plot.Height * Math.Clamp(v / max, 0, 1));
-        DrawSeries(dc, pts.Select(p => Map(p.t, p.b, maxB)), PenB);
+        if (hasB) DrawSeries(dc, pts.Select(p => Map(p.t, p.b, maxB)), PenB);
         DrawSeries(dc, pts.Select(p => Map(p.t, p.a, maxA)), PenA);
     }
 

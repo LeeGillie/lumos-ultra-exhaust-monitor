@@ -11,6 +11,8 @@ Cheap, fully local airflow monitoring for a laser-engraver exhaust. Differential
 
 It was built for a **WeCreat Lumos Ultra** (fiber/UV) venting through an **AC Infinity CLOUDLINE S6**. Everything, including the duct path, fan curve and sensor map, is set in a JSON file, so it adapts to other lasers and fans.
 
+The exhaust run itself is ordinary 4" and 6" **flexible** duct and stays that way. The one exception is a 5 ft **rigid 4" measuring spool** holding a Dwyer 166-6-CF pitot-static probe: flex duct has corrugations, a vague inside diameter and a centreline that shifts when the hose moves, so the flow measurement everything else is checked against gets one stable, known-geometry station. [DESIGN.md §2–3](docs/DESIGN.md) covers the spool, the probe and the traverse.
+
 ![LumosAir detecting a clogged duct run and a leaking dust bin](docs/screenshots/clog-and-bin-leak.png)
 
 ---
@@ -31,7 +33,8 @@ Cyclones are finicky. They only separate well within a band of airflow, and they
    - Once the real fan curve is measured, `lumosair model` gives a measured-model answer for any candidate cyclone before you spend ~$400. See [DESIGN.md §1](docs/DESIGN.md#1-key-findings-read-this-first).
 3. **Is brass settling in the duct right now?**
    - Air speed in each section is compared with the speed needed to keep metal particles airborne (~3,500 fpm).
-   - With the S6, the 6" run is far below that. That is why the separator has to sit *before* the long run, with almost no duct ahead of it.
+   - Modelled as it stands today (`lumosair init --option C`), the system moves about 200 CFM at level 10: ~2,300 fpm in the 4" section and ~1,020 fpm in the 6" run. Both are below what brass needs, so the duct is currently acting as the separator — which matches the brass found in the old hose.
+   - No fan level fixes that, which is the argument for a separator at the laser rather than more fan speed.
 4. **Once a separator is installed, is it working?**
    - The monitor tracks cyclone pressure drop, dust-bin suction (a leaking bin stops separation), inlet velocity and estimated cut size.
    - It compares them all against a "known good" baseline.
@@ -44,7 +47,11 @@ In short: **measure first, then size the separator to the air you actually have*
 
 These come from the built-in simulator (`LumosAir.exe --selftest out.png --scenario <name>`), so you can explore the app before any hardware exists.
 
-| Healthy system | Fan turned down too far |
+**The system as it stands today (Option C, no separator).** Every duct is on the dirty side, and none of them is fast enough to carry brass — no fan level fixes it, which is the case for a separator at the laser:
+
+![Today, no separator](docs/screenshots/today-no-separator.png)
+
+| Healthy system (Option A, with a separator) | Fan turned down too far |
 |---|---|
 | ![healthy](docs/screenshots/healthy.png) | ![low fan](docs/screenshots/low-fan-level.png) |
 | **Clogged pitot tube** (app switches to the other sensors) | **Blocked outside vent / damper** |
@@ -65,7 +72,7 @@ Approximate prices as of September 2026; check before ordering. The full list is
 | Channel type | Parts | Approx. cost |
 |---|---|---|
 | **Precision differential channel** (cyclone ΔP, enclosure) | Sensirion SDP810-500Pa + tubing + 2 wall taps | **$38–55** |
-| **Pitot flow channel** (CFM) | SDP810-500Pa + pitot-static probe + tubing | **$60–130** |
+| **Pitot flow channel** (CFM) | SDP810-500Pa + Dwyer 166-6-CF pitot-static probe + 1/8" FNPT boss + tubing/adapters | **$210–295** |
 | **High-suction static channel** (bin, run start, fan inlet) | CFSensor XGZP6897D ±1 kPa + tubing + wall tap | **$11–18** |
 | Air-density channel (optional) | BME280 breakout | $5–10 |
 
@@ -73,10 +80,12 @@ Approximate prices as of September 2026; check before ordering. The full list is
 
 | Node | Contents | Approx. cost |
 |---|---|---|
-| **Laser node** | ESP32, TCA9548A mux, BME280, 3× SDP810, 2× XGZP6897D, pitot probe, tubing, taps, enclosure, USB supply | **$195–320** |
+| **Laser node** | ESP32, TCA9548A mux, BME280, 3× SDP810, 2× XGZP6897D, Dwyer pitot + boss, tubing, taps, enclosure, USB supply | **$345–485** |
 | **Fan node** | ESP32, 1× XGZP6897D, tap, enclosure, USB supply | **$35–50** |
-| **Complete system** (excluding the separator) | both nodes + 5 ft of smooth 4" pipe | **≈ $250–400** |
-| **Measure-first starter kit** | fan node + an ESP32 with just the pitot channel | **≈ $110–190** |
+| **Complete system** (excluding the separator) | both nodes + the 5 ft rigid 4" measuring spool | **≈ $400–570** |
+| **Measure-first starter kit** | fan node + an ESP32 with only the pitot channel and the rigid spool | **≈ $300–400** |
+
+The Dwyer 166-6-CF pitot ($160–220 new) is most of the difference. It earns its place: its ASHRAE tip needs no calibration (coefficient 1.000), and at 1/8" it is one of the few probes Dwyer rates for a duct as small as 4". A generic probe is cheaper but has an unknown coefficient, so it has to be calibrated against something else.
 
 ---
 
@@ -90,7 +99,7 @@ app/
   src/LumosAir.Desktop   WPF monitor app
   src/LumosAir.Cli       `lumosair` CLI: model / simulate / listen
   tests/LumosAir.Tests   dependency-free test runner (30 tests)
-  config/                sample system.json (Option A / Option B layouts)
+  config/                sample system.json (Option A / B, and C = today's system)
 ```
 
 ## Desktop app (Windows, .NET 9)
@@ -99,10 +108,11 @@ app/
 cd app
 dotnet run --project src/LumosAir.Desktop                       # the monitor
 dotnet run --project tests/LumosAir.Tests                       # tests
+dotnet run --project src/LumosAir.Cli -- model --option C        # the system as it is today
 dotnet run --project src/LumosAir.Cli -- model --need-cfm 200   # "can my fan do this?"
 ```
 
-- **First run:** the app writes `%APPDATA%\LumosAir\system.json`. Use **Edit config**, then **Reload**.
+- **First run:** the app writes `%APPDATA%\LumosAir\system.json`. Use **Edit config**, then **Reload**. Start it with `--config path\to\system.json` to use a different one (e.g. `app/config/system.optionC.json`).
 - **No hardware yet:** set **Source** to **Simulator**, click **Connect**, then **Capture baseline**, and use the sliders to inject faults.
 - **Real nodes:** use **Udp** (no setup needed) or **Mqtt** (e.g. the Home Assistant Mosquitto add-on). Set **Set level** to match the fan controller.
 - **Logs:** a CSV row is written to `%APPDATA%\LumosAir\` every 5 s.
@@ -132,7 +142,7 @@ Commands go to UDP port 47811 or `lumosair/<node>/cmd`, e.g. `{"cmd":"zero"}`.
 
 ## Status
 
-- **Working and tested:** the physics model, the diagnostics (all 9 simulated faults detected, no false alarms), the desktop app and the CLI.
+- **Working and tested:** the physics model, the diagnostics (all 9 simulated faults detected, no false alarms), the desktop app and the CLI. 32 automated tests.
 - **Firmware:** compile-verified, not yet run on hardware.
 - **Needs calibration:** the fan curve, cyclone loss coefficient and pitot profile factor are estimates until they are measured on the real system. [DESIGN.md §6](docs/DESIGN.md#6-commissioning) walks through calibrating them.
 

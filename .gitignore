@@ -9,3 +9,6 @@ firmware/include/lumosair_config.h
 # OS
 Thumbs.db
 .DS_Store
+
+# Office lock files
+~$*

@@ -109,7 +109,7 @@
     },
     {
       "id": "duct6",
-      "name": "6\" smooth pipe (5 ft, pitot)",
+      "name": "6\" rigid measuring spool (5 ft, pitot)",
       "type": "duct",
       "zone": "postSeparator",
       "diameterIn": 6,

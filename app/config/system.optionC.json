@@ -1,5 +1,5 @@
 {
-  "name": "Lumos Ultra exhaust – Option A (4\" section)",
+  "name": "Lumos Ultra exhaust – Option C (today, no separator)",
   "air": {
     "temperatureC": 20,
     "relativeHumidity": 40,
@@ -73,33 +73,10 @@
       "kSum": 0.3
     },
     {
-      "id": "cyclone",
-      "name": "Cyclone separator",
-      "type": "cyclone",
-      "zone": "separator",
-      "diameterIn": 4,
-      "lengthFt": 0,
-      "flex": false,
-      "flexFactor": 2.5,
-      "roughnessMm": 0.09,
-      "kSum": 0,
-      "cyclone": {
-        "model": "Generic 4\" inlet cyclone",
-        "inletWidthIn": 4,
-        "inletHeightIn": 4,
-        "roundInlet": true,
-        "k": 6,
-        "turns": 5,
-        "binFraction": 0.5,
-        "minInletFpm": 1000,
-        "maxInletFpm": 4500
-      }
-    },
-    {
-      "id": "duct4",
+      "id": "spool4",
       "name": "4\" rigid measuring spool (5 ft, pitot)",
       "type": "duct",
-      "zone": "postSeparator",
+      "zone": "preSeparator",
       "diameterIn": 4,
       "lengthFt": 5,
       "flex": false,
@@ -111,7 +88,7 @@
       "id": "adapt46",
       "name": "4\"→6\" adapter",
       "type": "fitting",
-      "zone": "postSeparator",
+      "zone": "preSeparator",
       "diameterIn": 4,
       "lengthFt": 0,
       "flex": false,
@@ -123,7 +100,7 @@
       "id": "run6",
       "name": "6\" flex run (30 ft)",
       "type": "duct",
-      "zone": "postSeparator",
+      "zone": "preSeparator",
       "diameterIn": 6,
       "lengthFt": 30,
       "flex": true,
@@ -135,7 +112,7 @@
       "id": "fan",
       "name": "CLOUDLINE S6",
       "type": "fan",
-      "zone": "postSeparator",
+      "zone": "preSeparator",
       "diameterIn": 6,
       "lengthFt": 0,
       "flex": false,
@@ -170,7 +147,7 @@
       "id": "out6",
       "name": "6\" to wall (1 ft)",
       "type": "duct",
-      "zone": "postSeparator",
+      "zone": "preSeparator",
       "diameterIn": 6,
       "lengthFt": 1,
       "flex": true,
@@ -182,7 +159,7 @@
       "id": "exit",
       "name": "Wall cap / damper",
       "type": "exit",
-      "zone": "postSeparator",
+      "zone": "preSeparator",
       "diameterIn": 6,
       "lengthFt": 0,
       "flex": false,
@@ -194,33 +171,13 @@
   "channels": [
     {
       "node": "laser",
-      "channel": "cyc_dp",
-      "label": "Cyclone ΔP",
-      "role": "cycloneDp",
-      "highTap": "before:cyclone",
-      "lowTap": "after:cyclone",
-      "profileFactor": 0.9,
-      "fullScalePa": 500
-    },
-    {
-      "node": "laser",
-      "channel": "bin",
-      "label": "Dust-bin suction",
-      "role": "binSuction",
-      "highTap": "room",
-      "lowTap": "bin:cyclone",
-      "profileFactor": 0.9,
-      "fullScalePa": 1000
-    },
-    {
-      "node": "laser",
       "channel": "pitot",
       "label": "Pitot velocity pressure",
       "role": "pitotVp",
       "highTap": "room",
       "lowTap": "room",
       "profileFactor": 0.9,
-      "pitotElementId": "duct4",
+      "pitotElementId": "spool4",
       "fullScalePa": 500
     },
     {
@@ -287,7 +244,7 @@
     "id": "fan",
     "name": "CLOUDLINE S6",
     "type": "fan",
-    "zone": "postSeparator",
+    "zone": "preSeparator",
     "diameterIn": 6,
     "lengthFt": 0,
     "flex": false,
@@ -316,29 +273,6 @@
       ],
       "levels": 10,
       "currentLevel": 10
-    }
-  },
-  "cyclone": {
-    "id": "cyclone",
-    "name": "Cyclone separator",
-    "type": "cyclone",
-    "zone": "separator",
-    "diameterIn": 4,
-    "lengthFt": 0,
-    "flex": false,
-    "flexFactor": 2.5,
-    "roughnessMm": 0.09,
-    "kSum": 0,
-    "cyclone": {
-      "model": "Generic 4\" inlet cyclone",
-      "inletWidthIn": 4,
-      "inletHeightIn": 4,
-      "roundInlet": true,
-      "k": 6,
-      "turns": 5,
-      "binFraction": 0.5,
-      "minInletFpm": 1000,
-      "maxInletFpm": 4500
     }
   }
 }

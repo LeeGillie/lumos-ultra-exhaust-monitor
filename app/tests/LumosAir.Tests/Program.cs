@@ -222,6 +222,28 @@ await T("5 ft of 4\" hose BEFORE the cyclone triggers the transport-velocity rul
     var snap = RunScenario(cfg, "none");
     True(snap.Findings.Any(f => f.Code is "velocity-low-pre" or "fan-undersized"), string.Join(",", snap.Findings.Select(f => f.Code)));
 });
+await T("Option C (today, no separator): every duct is dirty-side and too slow for brass", () =>
+{
+    var cfg = DefaultSystems.Current();
+    True(cfg.Cyclone is null, "no cyclone element");
+    True(cfg.Channels.All(c => c.Role is not (ChannelRole.CycloneDp or ChannelRole.BinSuction)), "no cyclone channels");
+    var m = new SystemModel(cfg);
+    double q = m.OperatingFlow(10, spokane);
+    True(Units.Cfm(q) is > 150 and < 260, $"flow {Units.Cfm(q):0} CFM");
+    // The 6" run cannot carry brass at any fan level -> the monitor must say so.
+    var snap = RunScenario(cfg, "none");
+    True(snap.Findings.Any(f => f.Code is "fan-undersized" or "velocity-low-pre"),
+        string.Join(",", snap.Findings.Select(f => f.Code)));
+});
+await T("Option C pitot still inverts to the right flow", () =>
+{
+    var cfg = DefaultSystems.Current();
+    var m = new SystemModel(cfg);
+    var pitot = cfg.Channels.First(c => c.Role == ChannelRole.PitotVp);
+    True(pitot.PitotElementId == "spool4", "pitot in the rigid spool");
+    double q = Units.FromCfm(180);
+    Near(Units.Cfm(m.FlowFromPitot(pitot, m.PredictReading(pitot, q, spokane), spokane)), 180, 0.02, "pitot");
+});
 await T("recommended level restores cyclone performance after 'slow'", () =>
 {
     var snap = RunScenario(DefaultSystems.OptionA(), "slow");

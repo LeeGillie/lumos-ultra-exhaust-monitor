@@ -1,6 +1,6 @@
 # LumosAir – Exhaust Airflow Monitor for the Lumos Ultra
 
-*Design document, rev 1 — September 2026*
+*Design document, rev 2 — September 2026* (rev 2: named the pitot probe, added the rigid measuring spool vs. flex duct distinction, two-axis traverse, and Option C — today's system)
 
 LumosAir is a low-cost, fully local system that measures airflow along the Lumos Ultra exhaust path and tells you when to raise the fan speed. It also flags a clogged duct, a leaking joint, a failing separator or a leaking dust bin. It has three parts:
 
@@ -23,8 +23,8 @@ The numbers below come from the model in `app/` (`lumosair model …`). Two inpu
    ```
 2. **Brass is much easier to separate than wood dust, so a low-velocity cyclone can still work well.** Cyclone cut size scales with 1/√(particle density), and brass is about 8.5 g/cm³. Even at a modest ~1,600 fpm inlet speed, a cyclone with a 4" inlet has an estimated 50 % cut size near **2.6 µm for brass** (7.5 µm for wood char). The better fit is a **larger-inlet, lower-pressure-drop cyclone** that the S6 can actually drive. Manufacturers' minimum-CFM ratings are written for wood dust; the monitor measures whether your cyclone is actually working.
 3. **Put nothing but a short smooth adapter between the Lumos and the cyclone.** The 3" outlet runs at roughly 2,000–2,900 fpm with the S6. That is below the ~3,500 fpm needed to keep brass airborne. The only safe amount of duct before the separator is almost none, which matches the pile of brass found inside the old 35 ft temporary hose.
-4. **After the cyclone, the 6" flex run is not the bottleneck.** It costs only about 40 Pa of the fan's pressure. The Lumos 3" outlet, the 3"→4" adapter and the cyclone cost about 320 Pa. Smoothing out the 6" run gains little; the cyclone choice matters far more.
-5. **Measure flow in a 4" smooth section (Option A), not in 6" (Option B).** At the same flow, a pitot tube in 4" pipe sees about 47 Pa versus about 10 Pa in 6", which gives five times the signal for the same sensor.
+4. **After the cyclone, the 6" flex run is not the bottleneck.** It costs about 40 Pa when the flex is pulled taut and about 60 Pa if it sags (friction multiplier 1.5 → 4.0), which moves the operating point by only 143 → 139 CFM. The Lumos 3" outlet, the 3"→4" adapter and the cyclone cost about 320 Pa between them. Replacing the 6" flex with smooth pipe gains little; the cyclone choice matters far more.
+5. **Measure flow in a rigid 4" spool (Option A), not in 6" (Option B), and never in flex.** At the same flow, a pitot tube in 4" pipe sees about 47 Pa versus about 10 Pa in 6", which gives five times the signal for the same sensor.
 6. **Fan-inlet suction runs around 400 Pa**, close to the full scale of a 500 Pa sensor. Use ±1 kPa sensors for the high-suction taps (fan inlet, run start and bin) so that a clog does not push them off scale.
 
 ### Estimated operating points (Option A, generic 4" inlet cyclone, K = 6)
@@ -36,7 +36,19 @@ The numbers below come from the model in `app/` (`lumosair model …`). Two inpu
 | 8 | 113 | 2,303 | 1,295 | 1,295 | 576 | 146 Pa | 2.9 µm | 8.4 µm |
 | 10 | 142 | 2,884 | 1,622 | 1,622 | 721 | 228 Pa | 2.6 µm | 7.5 µm |
 
-The full tables are in `model-optionA.txt` and `model-optionB.txt`. For comparison, with **no cyclone** the model predicts about 200 CFM at level 10.
+The full tables are in `model-optionA.txt`, `model-optionB.txt` and `model-optionC.txt`.
+
+### Today's system (Option C, no separator): the brass has nowhere to drop out
+
+Modelled as it stands now — 3" outlet, 3"→4", ~5 ft of 4", 4"→6", 30 ft of 6" flex, S6, wall cap:
+
+| S6 level | CFM | 3" outlet fpm | 4" fpm | 6" fpm |
+|---|---|---|---|---|
+| 6 | 120 | 2,437 | 1,371 | 609 |
+| 8 | 160 | 3,264 | 1,836 | 816 |
+| 10 | 201 | 4,092 | 2,302 | 1,023 |
+
+Brass needs roughly 3,500 fpm to stay airborne. Even at level 10 the 4" section is at ~2,300 fpm and the 6" run at ~1,020 fpm, so **the duct itself is acting as the separator** — which is exactly what the brass pile in the old temporary hose showed. The monitor reports this as "fan cannot reach safe transport velocity", and no fan level fixes it. The fix is a separator at the laser, not more fan speed.
 
 ### Why the monitor is built before the separator
 
@@ -55,12 +67,20 @@ The flow you would get with each cyclone becomes a measured-model prediction ins
 ## 2. Physical layout
 
 ```
-Lumos Ultra ─3"─► short smooth 3"→4" ─► CYCLONE ─► 5 ft smooth 4" pipe ─► 4"→6" ─► 30 ft 6" flex ─► S6 ─► 1 ft ─► wall cap
+Lumos Ultra ─3"─► short smooth 3"→4" ─► CYCLONE ─► 5 ft RIGID 4" spool ─► 4"→6" ─► 30 ft 6" flex ─► S6 ─► 1 ft ─► wall cap
  [encl tap]                  [cyc in tap]  │  [cyc out tap]   [PITOT]          [run-start tap]    [fan-in tap]
                                            └─► sealed steel drum  [bin tap]
 ```
 
-**Option A (recommended)** is shown above. **Option B** replaces the 4" pipe with 5 ft of 6" smooth pipe right after the cyclone. It saves about 12 Pa but gives a much weaker pitot signal.
+**Option A (recommended)** is shown above. **Option B** replaces the 4" spool with 5 ft of rigid 6" pipe right after the cyclone: it saves about 12 Pa but gives a much weaker pitot signal. **Option C** is the system as it stands today, with no separator (`lumosair init --option C`); use it to measure before buying anything.
+
+### Flexible duct versus the one rigid section
+
+The exhaust run is **4" and 6" flexible duct**, and it stays that way. The single exception is the **rigid measuring spool**: about 5 ft of smooth 4" galvanized pipe holding the pitot probe. It exists only to give one stable, known-geometry measuring station, and it is not representative of the rest of the ducting.
+
+That matters because flex duct has corrugations that disturb the velocity profile, a less well defined inside diameter, and a centreline that moves when the hose is repositioned. A centreline reading taken in flex can be repeatable one day and wrong the next. Since the pitot is the primary CFM measurement that every other sensor is cross-checked against, its station is worth making rigid.
+
+The model already treats the flex as flex: `flex: true` with a friction multiplier (`flexFactor`) of 2.5, roughly 2.5× the friction of smooth pipe. Use 1.5 if the run is pulled taut and 4.0 if it sags. The rigid spool is the only duct element modelled as smooth.
 
 Everything before the cyclone is "dirty side" and must be short, smooth, metal and bonded to ground. The fan sits on the clean side.
 
@@ -72,7 +92,7 @@ Everything before the cyclone is "dirty side" and must be short, smooth, metal a
 |---|---|---|---|---|---|
 | `cyc_dp` | laser | SDP810-500Pa | cyclone inlet wall tap | cyclone outlet wall tap | Cyclone restriction. Also a second flow meter once calibrated (ΔP ∝ Q²). |
 | `bin` | laser | XGZP6897D ±1 kPa | room | tap in drum lid | **Bin leaks.** A leaking bin stops a cyclone from separating. |
-| `pitot` | laser | SDP810-500Pa | pitot total port | pitot static port | Actual CFM. |
+| `pitot` | laser | SDP810-500Pa + Dwyer 166-6-CF | pitot total (1/8" OD) | pitot static (1/4" OD) | Actual CFM. |
 | `run_in` | laser | XGZP6897D ±1 kPa | room | 6" run start wall tap | With `fan_in`: resistance of the long run (clog, kink or leak). |
 | `encl` | laser | SDP810-500Pa | room | tube into the enclosure | Fume capture: is the Lumos under negative pressure? |
 | `fan_in` | fan | XGZP6897D ±1 kPa | room | fan inlet wall tap | Total suction. With the fan curve, reveals outlet-side problems. |
@@ -80,10 +100,48 @@ Everything before the cyclone is "dirty side" and must be short, smooth, metal a
 
 **Wall taps.** Drill a 1/8" hole square to the wall and **deburr the inside** (burrs cause large errors). Glue or print a small saddle with a barb, and run 3/16" ID silicone tubing to the sensor. Tubing a few feet long is fine for static pressure. Mount all laser-node sensors inside one enclosure and run tubes to them; do not run I²C wires out to the duct.
 
-**Pitot.** Use a pitot-static probe (Prandtl type) in the 5 ft smooth 4" section, about **4 ft downstream** of the cyclone outlet (roughly 12 diameters) and about 1 ft before the 4"→6" adapter. Point it straight into the flow at the duct centreline.
-- The app converts the centreline reading to mean velocity with `profileFactor` 0.9.
-- **Calibrate once:** do a 6-point traverse across the duct with the same probe, then set `profileFactor` to (mean ÷ centreline).
-- Pitot tips clog. The app cross-checks the pitot against the pressure taps and flags a suspect pitot automatically.
+### The pitot station
+
+**Probe: Dwyer 166-6-CF** (Series 160 pocket-size pitot-static tube). 304 stainless; 1/8" (3.18 mm) stem; 6" insertion length; 3" tip; ASME / AMCA / ASHRAE tip geometry, so the **probe coefficient is 1.000 — no probe calibration needed**. The `-CF` suffix adds a 1/8" male-NPT adjustable compression mounting fitting. Dwyer's own sizing rule is that the duct should be at least 30× the probe diameter, which for a 1/8" probe means **4" minimum** — exactly our 4" spool. (The 167-6-CF is the same probe with a shorter 1-1/2" tip.)
+
+**Placement.** In the 5 ft rigid 4" spool, about **4 ft downstream** of the cyclone outlet and about 1 ft before the 4"→6" adapter. That is roughly 12 duct diameters upstream and 3 downstream, comfortably past Dwyer's minimum of 8.5 upstream and 1.5 downstream. Point the tip straight into the flow; the hemispherical tip tolerates about 15° of misalignment.
+
+**Mounting.** The compression fitting has 1/8" *male* NPT threads, so the spool needs a matching 1/8" **FNPT boss** — a small welded or brazed boss, or a sealed bulkhead fitting. Don't try to thread NPT into thin duct wall. The fitting then sets insertion depth, allows rotation for alignment, locks the probe and seals around the stem. Set the sensing axis to the true **centreline: 2.000" from the inside wall** of a 4.000" ID spool — measured from the inside wall, not from the outside face of the fitting, since the wall and boss add offset.
+
+Fit **two bosses 90° apart** at the same station: one carries the probe, the other takes a plug and is used for the second traverse axis during commissioning.
+
+**Tubing.** The Dwyer's connections are not two matching barbs: **total pressure is 1/8" OD, static pressure is 1/4" OD**, both smooth tubing stubs. The SDP810's own ports are about 5.2 mm OD, which suits the 3/16" ID silicone used elsewhere in the system. So use short transition pieces at the probe:
+
+- total (1/8" OD) → 1/8" ID silicone → reducer → 3/16" ID main line → SDP810 **+**
+- static (1/4" OD) → 1/4" ID silicone → reducer → 3/16" ID main line → SDP810 **−**
+
+These lines carry no continuous flow, so the diameter changes cost nothing.
+
+**Two corrections that are easy to confuse.** They are independent and both apply:
+
+| | What it corrects | Value |
+|---|---|---|
+| Probe coefficient `Cp` | The probe's own tip geometry | 1.000 for this Dwyer — nothing to apply |
+| `profileFactor` | Centreline velocity is higher than the duct average | 0.9 default, measured during commissioning |
+
+Dwyer says the same thing: a centreline reading times 0.9 is good to about ±5 % in the field, while a full traverse is needed for ±2 %.
+
+**Calibration traverse (do this once).** Because the probe sits downstream of a cyclone, residual swirl or an asymmetric profile is plausible, and a single-diameter traverse could bias the result. Use a **two-axis, six-point equal-area traverse**: six depths along one diameter, then the same six through the second boss 90° away, 12 readings total. For a 4.000" ID spool the equal-area depths from the inside wall are:
+
+| Point | Fraction of D | Depth |
+|---|---|---|
+| 1 | 0.043 | 0.172" |
+| 2 | 0.146 | 0.584" |
+| 3 | 0.296 | 1.184" |
+| 4 | 0.704 | 2.816" |
+| 5 | 0.854 | 3.416" |
+| 6 | 0.957 | 3.828" |
+
+Average the **square roots** of the 12 velocity-pressure readings (velocity ∝ √ΔP, so averaging raw pressures overstates the mean), then set `profileFactor` = mean velocity ÷ centreline velocity.
+
+**Signal size.** The app's `pitot` channel predicts the *centreline* velocity pressure, which is the duct-average value divided by `profileFactor²`. At the flows this system reaches, the mean VP in the 4" spool runs about 6 Pa at 56 CFM to 38 Pa at 142 CFM; the centreline readings the sensor actually sees are about 7 and 47 Pa. An SDP810-500Pa has plenty of headroom there, with roughly 0.1 Pa of zero-point error. The SDP810-125Pa would fit the range more tightly but improves zero-point error only to about 0.08 Pa, which doesn't justify a second part number.
+
+**Pitot tips clog.** The app cross-checks the pitot against the pressure taps and flags a suspect pitot automatically, falling back to the tap consensus for flow.
 
 **Leaks between taps.** Seal every joint on the suction side with foil tape (a mastic seal is better). A leak lowers the reading at every downstream tap and shows up as "run losing suction".
 
@@ -121,12 +179,15 @@ See `BOM.csv` for the full list. Prices are approximate as of September 2026; ch
 | CFSensor XGZP6897D, ±1 kPa, I²C | 3 | ~$8–15 ea |
 | TCA9548A I²C multiplexer breakout | 1 | ~$5–8 |
 | BME280 breakout | 1 | ~$5–10 |
-| Pitot-static probe, short insertion (4" duct) | 1 | $25–80 |
-| 3/16" ID silicone tubing, 10 m | 1 | ~$10 |
+| Dwyer 166-6-CF pitot-static probe | 1 | $160–220 |
+| 1/8" FNPT boss / bulkhead fittings (probe + spare port) | 2 | ~$10–30 |
+| 3/16" ID silicone tubing, 10 m (+ short 1/8" and 1/4" ID pieces and reducers) | 1 | ~$15–20 |
 | Barbed tap fittings or printed saddles | 8 | ~$10 |
-| 4" smooth metal pipe, 5 ft + couplers | 1 | ~$20–30 |
+| 4" rigid galvanized pipe, 5 ft + couplers + foil tape | 1 | ~$20–35 |
 | Enclosures, USB 5 V supplies, Dupont/JST leads | 2 | ~$30 |
-| **Total (excluding cyclone)** | | **≈ $250–400** |
+| **Total (excluding cyclone)** | | **≈ $390–540** |
+
+The Dwyer is the single largest line item outside the separator. It is worth it here because the pitot is the reference every other channel is compared against, and because at 1/8" it is one of the few probes rated for a 4" duct. New distributor pricing sits around $160–$220; surplus listings are sometimes half that. A generic probe will work, but then its coefficient is unknown and has to be calibrated against something else.
 
 **Wiring (laser node).**
 - ESP32 GPIO21 (SDA) and GPIO22 (SCL) go to the TCA9548A and the BME280. Each sensor goes on its own mux port 0–4.
@@ -144,7 +205,7 @@ See `BOM.csv` for the full list. Prices are approximate as of September 2026; ch
 2. **Zero**: fan off, lid closed, wait 10 s, then click **Zero sensors** in the app. Offsets are stored on each node.
 3. **Fan curve** (optional but valuable): record CFM and `fan_in` at levels 1–10. Put the measured points into `fan.curveCfm` / `fan.curvePa`. The fan's pressure is about `fan_in` plus the loss downstream of the fan.
 4. **Cyclone K**: at level 10, K = `cyc_dp` ÷ (½ρV²) using the cyclone inlet velocity. Enter it in `cyclone.k`.
-5. **Pitot traverse**: measure across the duct and set `profileFactor`.
+5. **Pitot traverse**: run the two-axis six-point traverse from §3 (12 readings), average the square roots of the readings, and set `profileFactor` = mean ÷ centreline. Then return the probe to the 2.000" centreline and lock the compression fitting.
 6. **Baseline**: with a clean duct and an empty drum, run at your normal level and click **Capture baseline**. From then on, drift is measured against this known-good state.
 7. **Verify**: engrave 25 coins, weigh the drum catch, and look inside the 6" run just after the 4"→6" expansion.
 
@@ -187,3 +248,5 @@ All nine simulated faults are covered by automated tests (`app/tests`). Each is 
 - Cyclone K and cut size use the Shepherd–Lapple and Lapple correlations. They are good for trends and ±30 % absolute.
 - Sub-micron fume is not separated by any cyclone. It goes outside with the exhaust, as it does today.
 - Pressure-based flow needs air moving well above about 30 CFM to be meaningful. Below that the app reports "fan off" rather than diagnosing.
+- Flex duct friction is modelled with a multiplier (`flexFactor`, default 2.5). Real flex varies from about 1.5 pulled taut to 4+ sagging; at this system's flows that whole range moves the operating point by only a few CFM, but it matters more if the run is ever lengthened.
+- The pitot's `profileFactor` starts at Dwyer's field value of 0.9 and is only as good as the traverse that replaces it. Swirl downstream of a cyclone is the reason for the two-axis traverse.

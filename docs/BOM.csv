@@ -4,9 +4,11 @@ Sensirion SDP810-500Pa,3,"cyc_dp, pitot, encl",35-50,Tube-connected I2C 0x25; Di
 CFSensor XGZP6897D +/-1 kPa (I2C),3,"bin, run_in, fan_in",8-15,I2C 0x6D; K=4096 for 1 kPa range
 TCA9548A I2C multiplexer breakout,1,laser node,5-8,Needed because sensors share fixed addresses
 BME280 breakout (I2C),1,laser node,5-10,Air density correction
-Pitot-static (Prandtl) probe short insertion,1,4-inch measuring section,25-80,Stainless; calibrate with a traverse
+Dwyer 166-6-CF pitot-static tube,1,4-inch rigid measuring spool,160-220,"1/8"" stem, 6"" insertion, 3"" tip, Cp=1.000, rated for ducts >= 4""; -CF = 1/8"" male NPT compression fitting"
 Silicone tubing 3/16 in ID,10 m,sensor to taps,10,
+"Silicone tubing 1/8 in and 1/4 in ID + reducers",1 set,pitot to 3/16 in main lines,5-10,"Dwyer total connection is 1/8"" OD; static is 1/4"" OD"
+"1/8 in FNPT boss or bulkhead fitting",2,"probe port + second traverse port 90 deg away",10-30,Weld/braze or sealed bulkhead; do not thread thin duct wall
 Barbed tap fittings / printed tap saddles,8,wall taps,10,Deburr holes inside the duct
-4-inch smooth metal pipe 5 ft + couplers + foil tape,1,measuring section (Option A),20-30,Ground it
+4-inch rigid galvanized pipe 5 ft + couplers + foil tape,1,rigid measuring spool (Option A),20-35,"Only rigid section; rest of the run stays 4""/6"" flex. Ground it"
 Enclosure + USB 5V supply + leads,2,nodes,15 each,
 Cyclone separator (steel) + sealed 20-30 gal drum,1,separator,400-600,See DESIGN.md section 4 before choosing

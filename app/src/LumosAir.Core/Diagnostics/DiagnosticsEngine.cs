@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using LumosAir.Core.Config;
 using LumosAir.Core.Model;
 using LumosAir.Core.Telemetry;

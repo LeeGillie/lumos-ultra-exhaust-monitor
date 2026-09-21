@@ -25,7 +25,7 @@
 
   <!-- 4" pipe -->
   <rect x="270" y="98" width="210" height="24" fill="#dfe8e0" stroke="#5b7c60"/>
-  <text x="360" y="140" text-anchor="middle" fill="#3b5c40" font-size="11">5 ft smooth 4" (measuring section)</text>
+  <text x="395" y="140" text-anchor="middle" fill="#3b5c40" font-size="11">5 ft RIGID 4" measuring spool (Dwyer pitot)</text>
   <!-- pitot -->
   <path d="M420,110 h-18 M420,110 v-32" stroke="#c0392b" stroke-width="3" fill="none"/>
 
@@ -33,7 +33,7 @@
   <path d="M480,98 L510,90 L510,130 L480,122 z" fill="#dfe8e0" stroke="#5b7c60"/>
   <!-- flex -->
   <path d="M510,95 h300" stroke="#9aa7b4" stroke-width="30" fill="none" stroke-dasharray="6 3"/>
-  <text x="660" y="140" text-anchor="middle" fill="#445" font-size="11">30 ft 6" flex run</text>
+  <text x="660" y="140" text-anchor="middle" fill="#445" font-size="11">30 ft 6" flex run (stays flexible)</text>
 
   <!-- Fan -->
   <circle cx="850" cy="110" r="36" fill="#e6e2f3" stroke="#6a5a9a"/>
@@ -79,4 +79,5 @@
   <rect x="20" y="300" width="14" height="10" fill="#f3d9c6" stroke="#b5764a"/><text x="40" y="309" fill="#444" font-size="11">dirty side – keep as short as possible</text>
   <rect x="20" y="320" width="14" height="10" fill="#dfe8e0" stroke="#5b7c60"/><text x="40" y="329" fill="#444" font-size="11">clean side (after separator)</text>
   <circle cx="27" cy="345" r="5" fill="#c0392b"/><text x="40" y="349" fill="#444" font-size="11">pressure tap / probe</text>
+  <text x="20" y="368" fill="#444" font-size="11">Only the measuring spool is rigid pipe; the rest of the run is 4"/6" flex.</text>
 </svg>

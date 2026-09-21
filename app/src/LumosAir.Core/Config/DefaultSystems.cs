@@ -46,11 +46,44 @@ public static class DefaultSystems
                 DiameterIn = 6, KSum = 2.0 },
     };
 
-    /// <summary>Option A: cyclone at the laser, then 5 ft of smooth 4" (pitot here), then 4"→6".</summary>
+    /// <summary>
+    /// Option C: the system as it is TODAY, with no separator — the measure-first layout.
+    /// The 5 ft of 4" flex after the laser is swapped for a rigid measuring spool so the pitot has a stable station.
+    /// With no separator every duct is "dirty side", so the transport-velocity rules apply to the whole run.
+    /// </summary>
+    public static SystemConfig Current()
+    {
+        var els = new List<ElementConfig>
+        {
+            new() { Id = "enclosure", Name = "Lumos Ultra enclosure (air inlets)", Type = ElementType.Source, Zone = Zone.PreSeparator,
+                    DiameterIn = 6, KSum = 2.5 },
+            new() { Id = "outlet3", Name = "Lumos 3\" exhaust outlet", Type = ElementType.Fitting, Zone = Zone.PreSeparator,
+                    DiameterIn = 3, KSum = 0.5 },
+            new() { Id = "adapt34", Name = "3\"→4\" adapter", Type = ElementType.Fitting, Zone = Zone.PreSeparator,
+                    DiameterIn = 3, KSum = 0.3 },
+            new() { Id = "spool4", Name = "4\" rigid measuring spool (5 ft, pitot)", Type = ElementType.Duct, Zone = Zone.PreSeparator,
+                    DiameterIn = 4, LengthFt = 5, RoughnessMm = 0.09 },
+            new() { Id = "adapt46", Name = "4\"→6\" adapter", Type = ElementType.Fitting, Zone = Zone.PreSeparator,
+                    DiameterIn = 4, KSum = 0.25 },
+            new() { Id = "run6", Name = "6\" flex run (30 ft)", Type = ElementType.Duct, Zone = Zone.PreSeparator,
+                    DiameterIn = 6, LengthFt = 30, Flex = true, FlexFactor = 2.5, KSum = 2.0 },
+            new() { Id = "fan", Name = "CLOUDLINE S6", Type = ElementType.Fan, Zone = Zone.PreSeparator,
+                    DiameterIn = 6, Fan = new FanConfig() },
+            new() { Id = "out6", Name = "6\" to wall (1 ft)", Type = ElementType.Duct, Zone = Zone.PreSeparator,
+                    DiameterIn = 6, LengthFt = 1, Flex = true },
+            new() { Id = "exit", Name = "Wall cap / damper", Type = ElementType.Exit, Zone = Zone.PreSeparator,
+                    DiameterIn = 6, KSum = 2.0 },
+        };
+        var cfg = Build("Lumos Ultra exhaust – Option C (today, no separator)", els, pitotIn: "spool4", runStartTap: "before:run6");
+        cfg.Channels.RemoveAll(c => c.Role is ChannelRole.CycloneDp or ChannelRole.BinSuction);
+        return cfg;
+    }
+
+    /// <summary>Option A: cyclone at the laser, then a 5 ft rigid 4" measuring spool (pitot here), then 4"→6".</summary>
     public static SystemConfig OptionA()
     {
         var els = Front();
-        els.Add(new() { Id = "duct4", Name = "4\" smooth pipe (5 ft, pitot)", Type = ElementType.Duct, Zone = Zone.PostSeparator,
+        els.Add(new() { Id = "duct4", Name = "4\" rigid measuring spool (5 ft, pitot)", Type = ElementType.Duct, Zone = Zone.PostSeparator,
                         DiameterIn = 4, LengthFt = 5, KSum = 0 });
         els.Add(new() { Id = "adapt46", Name = "4\"→6\" adapter", Type = ElementType.Fitting, Zone = Zone.PostSeparator,
                         DiameterIn = 4, KSum = 0.25 });
@@ -64,7 +97,7 @@ public static class DefaultSystems
         var els = Front();
         els.Add(new() { Id = "adapt46", Name = "Cyclone outlet 4\"→6\"", Type = ElementType.Fitting, Zone = Zone.PostSeparator,
                         DiameterIn = 4, KSum = 0.25 });
-        els.Add(new() { Id = "duct6", Name = "6\" smooth pipe (5 ft, pitot)", Type = ElementType.Duct, Zone = Zone.PostSeparator,
+        els.Add(new() { Id = "duct6", Name = "6\" rigid measuring spool (5 ft, pitot)", Type = ElementType.Duct, Zone = Zone.PostSeparator,
                         DiameterIn = 6, LengthFt = 5 });
         els.AddRange(Back());
         return Build("Lumos Ultra exhaust – Option B (straight to 6\")", els, pitotIn: "duct6", runStartTap: "before:run6");

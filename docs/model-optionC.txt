@@ -1,0 +1,30 @@
+Lumos Ultra exhaust – Option C (today, no separator)   air density 1.120 kg/m³
+
+Lvl   CFM  3"out fpm  cycIn fpm  4" fpm  6" fpm  cycΔP Pa  totalΔP Pa  d50 brass µm  d50 wood µm
+  1    19        387          -     218      97         0           4             -            -
+  2    39        792          -     446     198         0          16             -            -
+  3    59       1201          -     676     300         0          35             -            -
+  4    79       1612          -     907     403         0          63             -            -
+  5    99       2024          -    1139     506         0          98             -            -
+  6   120       2437          -    1371     609         0         141             -            -
+  7   140       2851          -    1604     713         0         192             -            -
+  8   160       3264          -    1836     816         0         251             -            -
+  9   181       3678          -    2069     920         0         317             -            -
+ 10   201       4092          -    2302    1023         0         391             -            -
+
+Loss breakdown at level 10 (201 CFM):
+  Lumos Ultra enclosure (air inlets)        37.8 Pa  (0.15 inWC)
+  Lumos 3" exhaust outlet                  121.0 Pa  (0.49 inWC)
+  3"→4" adapter                             72.6 Pa  (0.29 inWC)
+  4" rigid measuring spool (5 ft, pitot)    26.1 Pa  (0.10 inWC)
+  4"→6" adapter                             19.1 Pa  (0.08 inWC)
+  6" flex run (30 ft)                       82.4 Pa  (0.33 inWC)
+  CLOUDLINE S6                               0.0 Pa  (0.00 inWC)
+  6" to wall (1 ft)                          1.7 Pa  (0.01 inWC)
+  Wall cap / damper                         30.2 Pa  (0.12 inWC)
+
+Predicted sensor readings at level 10:
+  laser/pitot    Pitot velocity pressure        94.5 Pa
+  laser/run_in   Run-start suction             291.7 Pa
+  laser/encl     Enclosure suction              37.8 Pa
+  fan/fan_in   Fan-inlet suction             374.2 Pa

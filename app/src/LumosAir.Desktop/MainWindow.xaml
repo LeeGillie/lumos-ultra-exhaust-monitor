@@ -28,14 +28,14 @@
             <TextBlock Text="{Binding OverallText}" FontWeight="Bold" Foreground="#101316"/>
           </Border>
           <StackPanel>
-            <TextBlock Text="{Binding SystemName}" FontSize="15" FontWeight="SemiBold"/>
+            <TextBlock Text="{Binding SystemName}" FontSize="15" FontWeight="SemiBold" MaxWidth="300" TextTrimming="CharacterEllipsis" ToolTip="{Binding SystemName}"/>
             <TextBlock Text="{Binding AirText}" Style="{StaticResource Caption}"/>
           </StackPanel>
         </StackPanel>
 
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
           <TextBlock Text="Material" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,6,0"/>
-          <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" DisplayMemberPath="Name" Width="250" Margin="0,0,14,0"/>
+          <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" DisplayMemberPath="Name" Width="190" Margin="0,0,12,0"/>
           <TextBlock Text="Source" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,6,0"/>
           <ComboBox ItemsSource="{Binding SourceKinds}" SelectedItem="{Binding SourceKind}" Width="100" IsEnabled="{Binding IsConnected, Converter={x:Static ctl:Not.Instance}}"/>
           <TextBox Text="{Binding MqttHost, UpdateSourceTrigger=PropertyChanged}" Width="160" Margin="6,0,0,0"
