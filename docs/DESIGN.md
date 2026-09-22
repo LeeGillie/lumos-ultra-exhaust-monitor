@@ -1,6 +1,6 @@
 # LumosAir – Exhaust Airflow Monitor for the Lumos Ultra
 
-*Design document, rev 3 — September 2026* (rev 2: named the pitot probe, the rigid measuring spool vs. flex duct distinction, two-axis traverse, Option C. rev 3: identical enclosures with a fitment model, a display in each box, MicroPython firmware, and automatic fan control with manual override)
+*Design document, rev 4 — September 2026* (rev 2: named the pitot probe, the rigid measuring spool vs. flex duct distinction, two-axis traverse, Option C. rev 3: identical enclosures with a fitment model, a display in each box, MicroPython firmware, and automatic fan control with manual override. rev 4: stacked two-board enclosure with the hose routing modelled, 90° elbows at the sensors, a smaller 120 × 90 mm box, a front-panel power button, and generated panel artwork and PCB outlines)
 
 LumosAir is a low-cost, fully local system that measures airflow along the Lumos Ultra exhaust path and tells you when to raise the fan speed. It also flags a clogged duct, a leaking joint, a failing separator or a leaking dust bin. It has three parts:
 
@@ -184,10 +184,13 @@ See `BOM.csv` for the full list. Prices are approximate as of September 2026; ch
 | 3/16" ID silicone tubing, 10 m (+ short 1/8" and 1/4" ID pieces and reducers) | 1 | ~$15–20 |
 | Barbed tap fittings or printed saddles | 8 | ~$10 |
 | 4" rigid galvanized pipe, 5 ft + couplers + foil tape | 1 | ~$20–35 |
-| Hammond 1554H2GYCL enclosure (clear lid) | 2 | ~$25–35 ea |
+| Hammond 1554F2GYCL enclosure (clear lid, 120 × 90 × 60.5) | 2 | ~$20–28 ea |
 | 2.0" ST7789 240×320 display module | 2 | ~$9 ea (2-pack $17.99) |
-| Ø8 mm bulkhead barbs + blanking plugs | 12 | ~$15 total |
-| Cable glands, M3 standoff kit, perfboard | 1 set | ~$20 |
+| Ø8 mm bulkhead barb unions + blanking plugs | 16 | ~$20 total |
+| 90° push-on barbed elbows (3/16") | 8 | ~$6 total |
+| Ø12 mm illuminated latching push button | 2 | ~$4–7 ea |
+| Cable glands, M3 standoff kit | 1 set | ~$15 |
+| Custom PCB-A + PCB-B (2-layer, 105 × 41 mm) | 2 sets | ~$25–40 per set |
 | USB 5 V supplies, Dupont/JST leads | 2 | ~$20 |
 | **Total (excluding cyclone)** | | **≈ $500–680** |
 
@@ -217,33 +220,96 @@ The Dwyer is the single largest line item outside the separator. It is worth it 
 
 ## 6a. The boxes
 
-Both nodes live in the **same enclosure with the same bulkhead pattern**: a Hammond
-1554H2GYCL (180 × 120 × 60.5 mm, clear polycarbonate lid). The fan box simply plugs
-the ports it doesn't use. One box design, one drilling template, one spares list.
+Both nodes live in the **same enclosure with the same eight bulkheads**: a Hammond
+**1554F2GYCL**, 120 × 90 × 60.5 mm, clear polycarbonate lid. The fan box plugs the
+seven ports it doesn't use. One box design, one drill template, one spares list.
 
-![Enclosure fitment](../cad/out/render_top.png)
+![Enclosure fitment](../cad/out/render_iso.png)
 
-| | |
-|---|---|
-| Bulkheads | 6 × Ø8 mm at 24 mm pitch, 14 mm above the inside floor |
-| Cable gland | Ø12.5 mm in the end wall (USB supply; fan lead on the fan box) |
-| Lower deck | sensor carrier on 16 mm standoffs — the SDP810 barbs hang 9.7 mm below it, so tubing runs underneath instead of fighting for space |
-| MCU | ESP32 expansion board (68.6 × 53.4) on 6 mm standoffs |
-| Upper deck | 2.0" display on 34 mm standoffs, reading up through the clear lid |
-| Headroom | ~15 mm under the lid |
+### How it stacks
 
-The clear lid is doing real work here: **the display needs no cut-out**, so the box
-stays sealed against the dust it is there to monitor.
+Everything that needs a hose is on one board screwed to the floor; everything else
+is on a second board above it. Nothing is squeezed past anything.
+
+| | Height above the inside floor | Carries |
+|---|---|---|
+| **PCB-A** — sensor board | 4 → 5.6 mm, on M3 standoffs | 3 × SDP810, 2 × XGZP6897D. Every port faces **up**. |
+| hose zone | 6 → 31 mm | the eight silicone runs, and nothing else |
+| **PCB-B** — processor board | 34 → 35.6 mm, on spacers from PCB-A | ESP32-WROOM-32E, TCA9548A, BME280 |
+| display | 41.6 → 45.8 mm, on 6 mm standoffs | 2.0" ST7789, reading up through the clear lid |
+| | ~9 mm spare under the lid | |
+
+### How the hoses actually connect
+
+This is the part that decides the size of the box, so it is modelled as real tubing,
+not as a note.
+
+Each SDP810 is turned **90° on PCB-A** so its two barbs sit one behind the other at
+the *same x* as one column of bulkheads. A **push-on 90° barbed elbow** goes on each
+barb, turning the hose to point at the wall. From there it is a short, almost
+straight run of 3/16" ID silicone to its bulkhead — 20 to 45 mm, tightest bend
+radius **13 mm**, nothing crossing anything else.
+
+![Hose runs](../cad/out/render_front.png)
+
+The elbows are not a detail. Without them the hose leaves the barb pointing straight
+up and has to turn a full bend radius before it can enter a wall port, which pushes
+the ports to z ≈ 38 mm and the lid to 71 mm. `python cad/enclosure.py --compare`
+prints both cases:
+
+| fittings | tallest item | headroom in the 1554F | tightest bend |
+|---|---|---|---|
+| 90° elbows | 51.5 mm | 3.0 mm | 13.1 mm — fits |
+| straight onto the barb | 65.1 mm | −10.6 mm | 3.3 mm — kinks |
+
+**The VENT port** is an open bulkhead that keeps the box interior at room pressure.
+That is the reference side for the bin, run and enclosure channels, so each of those
+sensors needs only one hose instead of two.
+
+### Ports, switch and gland
+
+Eight Ø8 mm bulkheads, two rows of four, 22 mm pitch, rows 13 and 27 mm above the
+inside floor. Which sensor uses which hole is chosen by the model — it picks the
+assignment with the least sideways and vertical offset, because that is what decides
+whether the hoses bend gently or kink.
+
+| Column | Laser box (lower / upper) | Fan box |
+|---|---|---|
+| 1 | CYC + / CYC − | FAN IN / plug |
+| 2 | PITOT T / PITOT S | plugs |
+| 3 | VENT / ENCL | VENT / plug |
+| 4 | BIN / RUN | plugs |
+
+A **Ø12 mm illuminated latching push button** sits centred on the same front panel,
+above the hose runs: it is the power switch, and its ring is the power-on indicator,
+so there is no separate LED to drill for. The **Ø12.5 mm cable gland** for the 5 V
+lead goes in the left end wall, in the strip beside the hoses. Both are clear of
+PCB-B; on a 90 mm-deep box neither fits on the back wall without fouling it.
+
+### Marking the panel
+
+`python cad/artwork.py` writes 1:1 SVGs from the same model, so a moved port moves
+its hole, its label and its PCB mounting hole together. Red is cut/drill, black is
+engrave.
+
+![Front panel artwork](../cad/out/panel_front_laser.svg)
+
+It also writes `pcb_a_outline.dxf` and `pcb_b_outline.dxf` — board edge plus M3
+mounting holes — to import into KiCad as the board outline.
+
+### Why this size
+
+The lid is 108 cm². The display is 22 cm² of it and PCB-B is 43 cm². The box is
+about twice the display in each direction, which is roughly the floor set by the
+three SDP810s sitting side by side. A socketed ESP32 DevKit does not fit — it needs
+the 20 mm taller 1554G — which is the argument for soldering the bare module.
+
+The clear lid is doing real work: **the display needs no cut-out**, so the box stays
+sealed against the dust it is there to monitor.
 
 The model is a script (`cad/enclosure.py`), so it stays honest — it prints part
-positions, clearances and collisions, and exits non-zero if something doesn't fit.
-`cad/README.md` covers regenerating the STEP, STL, views and the 1:1 drill template.
-
-Port assignments (same holes, different use):
-
-| Port | Laser box | Fan box |
-|---|---|---|
-| 1–6 | cyc_dp +, cyc_dp −, bin, pitot total, pitot static, encl | fan_in, then five plugs |
+positions, hose lengths, bend radii, clearances and collisions, and exits non-zero
+if something doesn't fit. `cad/README.md` covers regenerating everything.
 
 ---
 

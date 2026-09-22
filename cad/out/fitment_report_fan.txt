@@ -1,0 +1,54 @@
+LumosAir stacked node — fan box, 1554F2GYCL, MCU: module
+outside 120 x 90 x 60.5 mm, inside 112.9 x 78.9 x 54.5 mm
+
+Stack
+  PCB-A underside         4.0 mm (standoffs off the floor)
+  PCB-B underside        20.0 mm (spacers off PCB-A)
+  tallest item           51.5 mm  (latching switch body)
+  headroom under lid      3.0 mm
+
+Parts
+  PCB-A (sensor board)               x    4.0– 108.9  y   34.0–  74.9  z   4.0–  5.6
+  XGZP fan_in sensor                 x   18.0–  29.0  y   38.0–  48.8  z   5.6– 15.2
+  elbow FAN IN                       x   19.9–  27.1  y   31.4–  43.4  z   7.6– 14.8
+  PCB-B (processor + display hat)    x    4.0– 108.9  y   34.0–  74.9  z  20.0– 21.6
+  cable gland body                   x    0.0–  18.0  y   12.2–  27.8  z  20.2– 35.8
+  BME280                             x   88.0–  92.0  y   67.9–  71.9  z  21.6– 22.8
+  ESP32-WROOM-32E (soldered)         x   67.0–  85.0  y   36.0–  61.5  z  21.6– 24.7
+  2.0" ST7789 display                x    8.0–  64.0  y   34.5–  74.5  z  27.6– 29.2
+  display glass                      x   11.5–  60.5  y   38.0–  71.0  z  29.2– 31.8
+  latching switch body               x   49.0–  64.0  y    0.0–  22.0  z  36.5– 51.5
+
+Hoses (sensor port -> bulkhead, inside the box)
+  FAN IN    length  19.5 mm   min bend R  47.9 mm   highest point  17.0 mm
+  tightest bend 47.9 mm; clearance from the tubes to PCB-B 3.0 mm
+
+Collisions
+  none
+
+Bulkheads (identical on both boxes)
+  8 x Ø8 mm — two rows of 4 at 22 mm pitch, z = 13 and 27 mm
+    x   23.5  z 13.0   FAN IN
+    x   45.5  z 13.0   VENT
+    x   67.5  z 13.0   PLUG
+    x   89.5  z 13.0   PLUG
+    x   23.5  z 27.0   PLUG
+    x   45.5  z 27.0   PLUG
+    x   67.5  z 27.0   PLUG
+    x   89.5  z 27.0   PLUG
+  gland Ø12.5 mm at y 20, z 28 (left end wall)
+  switch Ø12.0 mm at x 56.5, z 44 (front wall, above the ports)
+
+How much bigger is the box than the display?
+  lid           108.0 cm²
+  PCB-B          42.9 cm² (40% of the lid)
+  display        22.4 cm² (21% of the lid)
+
+Notes
+  • PCB-A carries everything with a hose; its sensor ports face UP.
+  • Each hose is a short silicone tube from a sensor port to one bulkhead.
+  • The VENT port keeps the box interior at room pressure, which is the
+    reference side for the bin, run and enclosure channels — so those
+    sensors need only one tube each.
+  • The lid is clear, so the display needs no cut-out.
+  • Verify the floor boss pattern for this box size before drilling PCB-A.

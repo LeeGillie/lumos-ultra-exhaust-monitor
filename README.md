@@ -75,16 +75,16 @@ Approximate prices as of September 2026; check before ordering. The full list is
 | **Pitot flow channel** (CFM) | SDP810-500Pa + Dwyer 166-6-CF pitot-static probe + 1/8" FNPT boss + tubing/adapters | **$210–295** |
 | **High-suction static channel** (bin, run start, fan inlet) | CFSensor XGZP6897D ±1 kPa + tubing + wall tap | **$11–18** |
 | Air-density channel (optional) | BME280 breakout | $5–10 |
-| **Box** (either node) | Hammond 1554H2GYCL + 2.0" ST7789 display + 6 bulkheads + gland + standoffs | **$70–95** |
+| **Box** (either node) | Hammond 1554F2GYCL + 2.0" ST7789 display + 8 bulkheads + elbows + button + gland + PCB-A/PCB-B + standoffs | **$90–125** |
 
 ### Per node
 
 | Node | Contents | Approx. cost |
 |---|---|---|
-| **Laser node** | ESP32, TCA9548A mux, BME280, 3× SDP810, 2× XGZP6897D, Dwyer pitot + boss, tubing, taps, box + display | **$400–560** |
-| **Fan node** | ESP32, 1× XGZP6897D, tap, box + display | **$95–125** |
-| **Complete system** (excluding the separator) | both nodes + the 5 ft rigid 4" measuring spool | **≈ $520–700** |
-| **Measure-first starter kit** | fan node + an ESP32 with only the pitot channel and the rigid spool | **≈ $370–470** |
+| **Laser node** | ESP32, TCA9548A mux, BME280, 3× SDP810, 2× XGZP6897D, Dwyer pitot + boss, tubing, taps, box + display | **$415–580** |
+| **Fan node** | ESP32, 1× XGZP6897D, tap, box + display | **$110–155** |
+| **Complete system** (excluding the separator) | both nodes + the 5 ft rigid 4" measuring spool | **≈ $550–750** |
+| **Measure-first starter kit** | fan node + an ESP32 with only the pitot channel and the rigid spool | **≈ $385–500** |
 
 The Dwyer 166-6-CF pitot ($160–220 new) is most of the difference. It earns its place: its ASHRAE tip needs no calibration (coefficient 1.000), and at 1/8" it is one of the few probes Dwyer rates for a duct as small as 4". A generic probe is cheaper but has an unknown coefficient, so it has to be calibrated against something else.
 
@@ -92,17 +92,39 @@ The Dwyer 166-6-CF pitot ($160–220 new) is most of the difference. It earns it
 
 ## The boxes
 
-Both nodes use the **same enclosure with the same bulkhead pattern** (Hammond
-1554H2GYCL, clear lid); the fan box plugs the ports it doesn't use. The fitment
-model is a CadQuery script, so the STEP, STL, drawings, 1:1 drill template and the
-clearance report are all generated from one source — see [`cad/`](cad/).
+Both nodes use the **same enclosure with the same eight bulkheads** — a Hammond
+1554F2GYCL, 120 × 90 × 60.5 mm with a clear lid; the fan box plugs the ports it
+doesn't use.
 
-![Enclosure fitment](cad/out/render_top.png)
+![Enclosure fitment](cad/out/render_iso.png)
 
-Because the lid is clear polycarbonate, the 2" display needs no cut-out: it sits on
-standoffs and reads through the lid, and the box stays sealed. The screen shows the
-status colour, system CFM, fan level and mode, the top finding, and every channel on
-that node — and keeps showing live pressures if the PC app isn't running.
+Inside, it's two boards. **PCB-A** screws to the floor and carries everything that
+needs a hose — three SDP810s and two XGZP6897Ds, all with their ports facing up.
+Spacers carry **PCB-B** above the hose runs with the ESP32, the multiplexer and the
+display, which reads up through the clear lid, so there is no cut-out and the box
+stays sealed against the dust it's there to monitor.
+
+The eight hoses are modelled as real tubing, because they are what sets the size of
+the box. Each SDP810 is turned 90° so its barbs line up behind one column of ports,
+and a push-on 90° elbow turns each hose to point at the wall — from there it's a
+20–45 mm run with a 13 mm minimum bend radius.
+
+![Hose runs](cad/out/render_front.png)
+
+Without those elbows a hose leaves the barb pointing straight up and has to climb a
+full bend radius before it can enter a wall port, which adds 25 mm to the box.
+`python cad/enclosure.py --compare` prints the case both ways.
+
+A Ø12 mm illuminated latching button sits on the same front panel: power switch and
+power-on indicator in one hole. The panel artwork, the 1:1 drill template and the
+KiCad board outlines all come out of the same script, so a moved port moves its
+hole, its label and its PCB mounting hole together — see [`cad/`](cad/).
+
+![Front panel artwork](cad/out/panel_front_laser.svg)
+
+The box screen shows the status colour, system CFM, fan level and mode, the top
+finding, and every channel on that node — and keeps showing live pressures if the PC
+app isn't running.
 
 ## Fan control: automatic or manual
 
@@ -119,7 +141,8 @@ yourself — until then Auto still works as an advisory, on screen and on the bo
 ## Repository layout
 
 ```
-cad/         parametric enclosure fitment model (CadQuery) + generated STEP/STL/views
+cad/         parametric enclosure model (CadQuery): fitment, hose routing,
+             panel artwork, KiCad board outlines, STEP/STL/renders
 docs/        DESIGN.md (start here), BOM.csv, system diagram, screenshots, model output
 firmware/micropython/   ESP32 node firmware: sensors, display, Wi-Fi, OTA
 app/

@@ -1,10 +1,11 @@
 """
 Shaded renders of the enclosure fitment model (cad/out/render_*.png).
 
-    python cad/render.py [--populate laser|fan]
+    python cad/render.py [--populate laser|fan] [--box auto|F|G|J|H] [--mcu module|devkit]
 
 Uses the same parametric model as enclosure.py, so the pictures can never drift
-from the geometry. The box is drawn as a translucent shell so the internals show.
+from the geometry. The box is drawn as a translucent shell so the internals — and
+in particular the hose runs — show through.
 """
 
 from __future__ import annotations
@@ -36,27 +37,37 @@ def add(ax, shape, color, alpha=1.0, lw=0.0):
     ax.add_collection3d(coll)
 
 
-def render(populate: str, out: Path) -> None:
-    parts = enc.build_parts(populate)
-    shell = enc.box_shell()
+TUBE_COLOR = (0.90, 0.45, 0.15)
 
-    views = [("render_iso.png", 22, -60, "LumosAir node — populated for the %s box" % populate),
-             ("render_top.png", 89, -90, "Top view (lid removed)"),
-             ("render_front.png", 4, -89, "Front view through the port wall")]
+
+def render(d: enc.Design, out: Path) -> None:
+    il, iw, ih = d.box.inside
+    ol, ow, oh = d.box.out
+    shell = enc.box_shell(d.box, d.switch_z, d.fittings)
+
+    views = [
+        ("render_iso.png", 24, -62,
+         f"LumosAir node — {d.populate} box, {d.box.code}"),
+        ("render_top.png", 89, -90, "Top view through the clear lid"),
+        ("render_front.png", 6, -89, "Front view — the port wall and the hose runs"),
+        ("render_side.png", 8, 0, "Side view — the two-board stack"),
+    ]
 
     for fname, elev, azim, title in views:
         fig = plt.figure(figsize=(11, 7), dpi=110)
         ax = fig.add_subplot(111, projection="3d")
         add(ax, shell, (0.62, 0.64, 0.67), alpha=0.10, lw=0.0)
-        for p in parts:
+        for x, z, lab in d.port_labels:
+            add(ax, enc.bulkhead(d.box, x, z), (0.72, 0.70, 0.62), alpha=0.9)
+        for p in d.parts:
             add(ax, p.solid(), p.color[:3], alpha=1.0, lw=0.15)
-            if p.name.startswith("SDP810"):
-                add(ax, enc.sdp_barbs(p), (0.93, 0.78, 0.2), alpha=1.0)
+        for t in d.tubes:
+            add(ax, t.solid(), TUBE_COLOR, alpha=1.0)
 
-        ax.set_box_aspect((enc.BOX_OUT_L, enc.BOX_OUT_W, enc.BOX_OUT_H))
-        ax.set_xlim(-enc.WALL, enc.BOX_IN_L + enc.WALL)
-        ax.set_ylim(-enc.WALL, enc.BOX_IN_W + enc.WALL)
-        ax.set_zlim(-enc.WALL, enc.BOX_IN_H + 4)
+        ax.set_box_aspect((ol, ow, oh))
+        ax.set_xlim(-enc.WALL, il + enc.WALL)
+        ax.set_ylim(-enc.WALL, iw + enc.WALL)
+        ax.set_zlim(-enc.WALL, ih + 4)
         ax.view_init(elev=elev, azim=azim)
         ax.set_xlabel("x (mm)"); ax.set_ylabel("y (mm)"); ax.set_zlabel("z (mm)")
         ax.set_title(title, fontsize=12)
@@ -64,14 +75,19 @@ def render(populate: str, out: Path) -> None:
         for pane in (ax.xaxis, ax.yaxis, ax.zaxis):
             pane.pane.set_alpha(0.0)
 
-        # legend
         seen: dict[str, tuple] = {}
-        for p in parts:
+        for p in d.parts:
+            if p.name in ("standoff", "spacer"):
+                continue
             key = p.name.split("#")[0].strip()
+            for prefix in ("SDP810 ", "XGZP ", "barb ", "elbow "):
+                if key.startswith(prefix):
+                    key = prefix.strip() + "s"
             seen.setdefault(key, p.color[:3])
+        seen["silicone hose"] = TUBE_COLOR
         handles = [plt.Line2D([], [], marker="s", linestyle="", markersize=8, color=c, label=k)
                    for k, c in seen.items()]
-        ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(-0.12, 0.95),
+        ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(-0.14, 0.97),
                   fontsize=8, frameon=False)
         fig.tight_layout()
         fig.savefig(out / fname, bbox_inches="tight")
@@ -82,7 +98,11 @@ def render(populate: str, out: Path) -> None:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--populate", choices=["laser", "fan"], default="laser")
+    ap.add_argument("--box", choices=list(enc.BOXES) + ["auto"], default="auto")
+    ap.add_argument("--mcu", choices=["module", "devkit"], default="module")
+    ap.add_argument("--fittings", choices=["elbow", "straight"], default="elbow")
     ap.add_argument("--out", default=str(Path(__file__).parent / "out"))
     a = ap.parse_args()
     o = Path(a.out); o.mkdir(parents=True, exist_ok=True)
-    render(a.populate, o)
+    code = enc.pick_box(a.populate, a.mcu, a.fittings) if a.box == "auto" else a.box
+    render(enc.build(a.populate, code, a.mcu, a.fittings), o)
