@@ -273,18 +273,65 @@ inside floor. Which sensor uses which hole is chosen by the model — it picks t
 assignment with the least sideways and vertical offset, because that is what decides
 whether the hoses bend gently or kink.
 
-| Column | Laser box (lower / upper) | Fan box |
+| Column | Lower row | Upper row |
 |---|---|---|
-| 1 | CYC + / CYC − | FAN IN / plug |
-| 2 | PITOT T / PITOT S | plugs |
-| 3 | VENT / ENCL | VENT / plug |
-| 4 | BIN / RUN | plugs |
+| 1 | CYC + | CYC − |
+| 2 | PITOT T | PITOT S |
+| 3 | VENT | ENCL |
+| 4 | BIN | RUN |
+
+Both boxes are drilled **and populated** the same — same two PCBs, same three
+SDP810s, same two XGZP6897Ds, same firmware. What differs is only what you connect
+outside: each box plugs the bulkheads its location doesn't use, and VENT always
+stays open. A box is therefore a spare for either position, and there is one
+spares list rather than two.
 
 A **Ø12 mm illuminated latching push button** sits centred on the same front panel,
 above the hose runs: it is the power switch, and its ring is the power-on indicator,
 so there is no separate LED to drill for. The **Ø12.5 mm cable gland** for the 5 V
 lead goes in the left end wall, in the strip beside the hoses. Both are clear of
 PCB-B; on a 90 mm-deep box neither fits on the back wall without fouling it.
+
+### Which box am I?
+
+Because the two boxes are populated identically, a node cannot tell what it is by
+scanning its own I²C bus — every box has every sensor. What tells them apart is what
+is connected on the outside, so that is what it looks at, in this order.
+
+**1. The fan pigtail.** Only the fan box has the AC Infinity UIS lead. A sense pin on
+PCB-B watches the UIS 10 V rail through a divider: rail present ⇒ this is the fan
+node. This is the one signal that is unambiguous at power-on, before any air moves,
+so it decides on its own when it is present.
+
+**2. What the taps see, once air is moving.** An unconnected tap sits at room
+pressure and reads about zero. After the first minute above a usable flow, a box
+reading real signal on `cyc_dp` / `pitot` / `bin` / `run_in` is the laser node; a box
+where those sit at zero and `fan_in` does not is the fan node. This confirms (1), and
+stands alone if the sense pin is not fitted.
+
+**3. Ask, once.** If neither is conclusive — no pigtail sense, no flow yet, or the two
+disagree — the box puts a two-choice question on its screen and answers it with the
+front-panel button, which is the only control on the outside of a sealed box:
+
+```
+        WHICH BOX IS THIS?
+
+     > LASER    (short press)
+       FAN      (hold 2 s)
+```
+
+The answer is written to NVS, so the question is asked once per box and not again;
+`{"cmd":"clear_role"}` erases it if you move a box. `NODE_ID` in `config.py`
+overrides the whole process, which is what you want on the bench.
+
+**Why the button and not the screen.** The display is a 4-wire SPI ST7789 — SCK,
+MOSI, CS, DC — with no touch controller, and no spare pins reserved for one. Even
+with a touch panel it would not help here: the display sits on standoffs *inside* the
+box, reading up through a fixed polycarbonate lid, so nothing can reach it without
+undoing four screws and breaking the seal that keeps the brass dust out. A touch
+display would mean a lid cut-out or a second panel, and that is the one thing the
+clear lid exists to avoid. The latching button is already on the marked face, outside
+the seal, and one button is exactly enough to answer a question with two choices.
 
 ### Marking the panel
 

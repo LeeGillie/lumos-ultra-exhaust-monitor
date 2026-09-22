@@ -1,9 +1,9 @@
 # Enclosure fitment model
 
-Both nodes use the **same box with the same eight bulkheads** — the fan box just
-plugs the ones it doesn't use. The model is a script, so moving a part is a one-line
-change and the drawings, the STEP file, the panel artwork, the PCB outlines and the
-clearance report all follow.
+Both nodes use the **same box, built the same** — same eight bulkheads, same two
+boards, same sensors. Each just plugs the ports its location doesn't use. The model
+is a script, so moving a part is a one-line change and the drawings, the STEP file,
+the panel artwork, the PCB outlines and the clearance report all follow.
 
 ```
 pip install cadquery matplotlib
@@ -84,12 +84,16 @@ labels follow, which is why the panel artwork is generated rather than drawn.
 
 Eight Ø8 mm holes, two rows of four, 22 mm pitch, rows at z = 13 and 27 mm.
 
-| Column | Laser box (lower / upper) | Fan box |
+| Column | Lower row | Upper row |
 |---|---|---|
-| 1 | CYC + / CYC − | FAN IN / plug |
-| 2 | PITOT T / PITOT S | plugs |
-| 3 | VENT / ENCL | VENT / plug |
-| 4 | BIN / RUN | plugs |
+| 1 | CYC + | CYC − |
+| 2 | PITOT T | PITOT S |
+| 3 | VENT | ENCL |
+| 4 | BIN | RUN |
+
+Both boxes are drilled and populated identically; each plugs the bulkheads its
+location doesn't use. A node works out which it is from what's connected outside —
+see [DESIGN.md §6a](../docs/DESIGN.md).
 
 **VENT** is an open port that keeps the box interior at room pressure. That's the
 reference side for the bin, run and enclosure channels, so each of those needs only

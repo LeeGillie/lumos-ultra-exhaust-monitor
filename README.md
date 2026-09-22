@@ -92,9 +92,10 @@ The Dwyer 166-6-CF pitot ($160–220 new) is most of the difference. It earns it
 
 ## The boxes
 
-Both nodes use the **same enclosure with the same eight bulkheads** — a Hammond
-1554F2GYCL, 120 × 90 × 60.5 mm with a clear lid; the fan box plugs the ports it
-doesn't use.
+Both nodes are the **same box, built the same** — a Hammond 1554F2GYCL, 120 × 90 ×
+60.5 mm with a clear lid, the same two boards and the same sensors in each. Only
+what you connect outside differs, and each box plugs the bulkheads its location
+doesn't use, so either box can serve either position.
 
 ![Enclosure fitment](cad/out/render_iso.png)
 
