@@ -81,10 +81,15 @@ a framebuffer, so the PNG is the panel pixel for pixel — layout bugs included.
 Standard library only.
 
 ```
-python tools/simulate_node.py                  # every scenario -> out/
-python tools/simulate_node.py --scenario nopc
-python tools/simulate_node.py --live           # act as a real node on the LAN
+python tools/simulate_node.py --window         # a window; arrows walk the screens
+python tools/simulate_node.py --live --window  # a live box, on screen
+python tools/simulate_node.py                  # every scenario -> out/*.png
+python tools/simulate_node.py --live           # headless; one PNG per frame
 ```
+
+`--window` opens a real window (tkinter, standard library) showing the panel at
+2x. Without `--live` it shows one scenario and **Left/Right** walk through all
+eight, so you can flick between states and compare layouts; Esc closes it.
 
 ![The box screen, healthy](../../docs/screenshots/node-screen-healthy.png)
 
@@ -94,11 +99,12 @@ Scenarios: `healthy`, `clog`, `binleak`, `pitot`, `slow`, `sensorfault`, `nopc`
 (the desktop app isn't running) and `fannode` (the one-channel box).
 
 `--live` makes it a stand-in for a real box: it publishes telemetry on UDP 47810,
-accepts commands on 47811, and listens for the app's status broadcast on 47812,
-rewriting `out/screen_live_laser.png` every frame. Start it, then run the desktop
-app with **Source = Udp** and **Connect** — the app sees a node that isn't there,
-and the screen reacts to what the app concludes. Open the PNG in VS Code and it
-refreshes as the file changes.
+accepts commands on 47811, and listens for the app's status broadcast on 47812.
+Start it, then run the desktop app with **Source = Udp** and **Connect** — the app
+sees a node that isn't there, and the screen reacts to what the app concludes.
+Add `--window` to watch it live; without it each frame is written to
+`out/screen_live_<node>.png` (written to a temp file and renamed, so a preview
+can never catch a half-written frame).
 
 The 8x8 font it uses stands in for MicroPython's built-in one. The cell is the
 same fixed 8x8, so anything that fits here fits on the panel; individual glyph

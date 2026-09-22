@@ -23,7 +23,7 @@ public static class StatusPayload
         var payload = new Dictionary<string, object?>
         {
             ["t"] = "status",
-            ["cfm"] = Math.Round(snap.FlowCfm, 1),
+            ["cfm"] = Finite(snap.FlowCfm, 1),
             ["src"] = snap.FlowSource,
             ["sev"] = snap.Overall.ToString().ToLowerInvariant(),
             ["fan"] = new Dictionary<string, object?>
@@ -34,10 +34,21 @@ public static class StatusPayload
             },
             ["msg"] = Headline(worst, controlNote),
         };
-        if (snap.CycloneInletFpm is { } fpm) payload["cyc_fpm"] = Math.Round(fpm);
-        if (snap.CutSizeMicron is { } d50) payload["d50"] = Math.Round(d50, 1);
+        if (Finite(snap.CycloneInletFpm, 0) is { } fpm) payload["cyc_fpm"] = fpm;
+        if (Finite(snap.CutSizeMicron, 1) is { } d50) payload["d50"] = d50;
         return JsonSerializer.Serialize(payload, Options);
     }
+
+    /// <summary>
+    /// Rounded value, or null when it isn't a real number.
+    /// <see cref="Model.SystemModel.CycloneCutSize"/> returns +infinity on purpose when
+    /// the inlet velocity is zero — no flow, no separation — and a flow solved from
+    /// inconsistent readings can land on NaN. Both are fine inside the model and fatal
+    /// here: System.Text.Json throws on them, and the nodes' json module would not
+    /// parse "Infinity" either. Null is what the box display already renders as "---".
+    /// </summary>
+    private static double? Finite(double? v, int digits) =>
+        v is { } d && double.IsFinite(d) ? Math.Round(d, digits) : null;
 
     private static string Headline(Finding? worst, string? controlNote)
     {

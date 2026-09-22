@@ -136,16 +136,29 @@ public sealed class DiagnosticsEngine
     /// <summary>Estimate current flow from the best available evidence.</summary>
     private (double q, string source) EstimateFlow(DateTimeOffset now, AirState air)
     {
+        // FlowFromReading returns NaN when a tap's predicted signal is too small to
+        // invert. That is "this tap cannot tell us", not "the flow is NaN", so fall
+        // through to the next source rather than handing a NaN to everything
+        // downstream — the segment velocities, the cyclone cut size and the status
+        // broadcast all derive from this number.
         var pitot = Role(ChannelRole.PitotVp);
-        if (TryGet(pitot, now, out var vp))
-            return (Model.FlowFromPitot(pitot!, Math.Max(0, vp), air), "pitot");
+        if (TryGet(pitot, now, out var vp) && Usable(Model.FlowFromPitot(pitot!, Math.Max(0, vp), air), out var qp))
+            return (qp, "pitot");
         var cyc = Role(ChannelRole.CycloneDp);
-        if (TryGet(cyc, now, out var dp))
-            return (Model.FlowFromReading(cyc!, dp, air, Corr(Key(cyc!))), "cyclone ΔP");
+        if (TryGet(cyc, now, out var dp)
+            && Usable(Model.FlowFromReading(cyc!, dp, air, Corr(Key(cyc!))), out var qc))
+            return (qc, "cyclone ΔP");
         var fanIn = Role(ChannelRole.FanInletSuction);
-        if (TryGet(fanIn, now, out var fs))
-            return (Model.FlowFromReading(fanIn!, fs, air, Corr(Key(fanIn!))), "fan-inlet suction");
+        if (TryGet(fanIn, now, out var fs)
+            && Usable(Model.FlowFromReading(fanIn!, fs, air, Corr(Key(fanIn!))), out var qf))
+            return (qf, "fan-inlet suction");
         return (Model.OperatingFlow(CurrentFanLevel, air), "model only");
+    }
+
+    private static bool Usable(double q, out double value)
+    {
+        value = q;
+        return double.IsFinite(q);
     }
 
     public DiagnosticSnapshot Evaluate()

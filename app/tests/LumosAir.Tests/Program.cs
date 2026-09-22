@@ -350,6 +350,47 @@ await T("status payload carries what the box displays need", () =>
     True(root.GetProperty("msg").GetString()!.Length is > 0 and <= 38, "headline fits the screen");
     True(json.Length < 300, $"payload {json.Length} bytes fits one datagram");
 });
+await T("a tap that cannot be inverted does not poison the flow estimate", () =>
+{
+    // FlowFromReading hands back NaN for "this tap cannot tell us". That must not
+    // become the system flow: everything downstream (segment velocities, cyclone cut
+    // size, the status broadcast) is derived from it.
+    var cfg = DefaultSystems.OptionA();
+    var engine = new DiagnosticsEngine(cfg);
+    var now = DateTimeOffset.UtcNow;
+    engine.Clock = () => now;
+    engine.ManualFanLevel = 7;
+    // No channel readings at all: it should fall through to the model, not NaN.
+    var snap = engine.Evaluate();
+    True(double.IsFinite(snap.FlowCfm), $"flow is a real number, got {snap.FlowCfm}");
+    True(snap.FlowCfm > 0, $"and a positive one, got {snap.FlowCfm}");
+    string json = StatusPayload.Build(snap, FanMode.Manual, 7);
+    True(!json.Contains("NaN") && !json.Contains("Infinity"), json);
+});
+await T("status payload survives the values the model legitimately produces", () =>
+{
+    // CycloneCutSize returns +infinity on purpose when the inlet velocity is zero,
+    // and a flow solved from inconsistent readings can be NaN. Both used to reach
+    // JsonSerializer, which throws on them - from an async void timer handler, so
+    // the app opened one modal dialog per tick until the desktop was full.
+    var snap = new DiagnosticSnapshot
+    {
+        FlowCfm = double.NaN,
+        FlowSource = "pitot",
+        CutSizeMicron = double.PositiveInfinity,
+        CycloneInletFpm = double.NegativeInfinity,
+        Findings = Array.Empty<Finding>(),
+    };
+    string json = StatusPayload.Build(snap, FanMode.Auto, 7, "auto: holding");
+    using var doc = System.Text.Json.JsonDocument.Parse(json);
+    var root = doc.RootElement;
+    True(root.GetProperty("cfm").ValueKind == System.Text.Json.JsonValueKind.Null,
+         "a non-finite cfm is sent as null, which the box renders as ---");
+    True(!root.TryGetProperty("d50", out _), "an infinite cut size is left out");
+    True(!root.TryGetProperty("cyc_fpm", out _), "an infinite inlet velocity is left out");
+    True(!json.Contains("Infinity") && !json.Contains("NaN"),
+         "nothing the nodes' json module would choke on: " + json);
+});
 await Test("auto mode drives the simulated fan back up after a drop", async () =>
 {
     var cfg = DefaultSystems.OptionA();

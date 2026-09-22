@@ -106,13 +106,54 @@
       "problemMatcher": []
     },
     {
-      // A stand-in box on the LAN. Run the app with Source = Udp against it.
-      "label": "node sim: live node on the LAN…",
+      // A window you can actually look at. Left/Right arrows walk the scenarios.
+      "label": "node sim: browse the box screens (window)",
       "type": "process",
       "command": "python",
-      "args": ["tools/simulate_node.py", "--live", "--node", "${input:fwNode}"],
+      "args": ["-u", "tools/simulate_node.py", "--window"],
       "options": { "cwd": "${workspaceFolder}/firmware/micropython" },
       "isBackground": true,
+      "presentation": { "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "node sim: live LASER node (window)",
+      "type": "process",
+      "command": "python",
+      "args": ["-u", "tools/simulate_node.py", "--live", "--window", "--node", "laser"],
+      "options": { "cwd": "${workspaceFolder}/firmware/micropython" },
+      "isBackground": true,
+      "presentation": { "group": "nodesim", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      // Stand-in boxes on the LAN. Run the app with Source = Udp against them.
+      // Separate labels per node on purpose: VS Code treats one label as one task,
+      // so a single parameterised task could not run both at once.
+      "label": "node sim: live LASER node",
+      "type": "process",
+      "command": "python",
+      "args": ["-u", "tools/simulate_node.py", "--live", "--node", "laser"],
+      "options": { "cwd": "${workspaceFolder}/firmware/micropython" },
+      "isBackground": true,
+      "presentation": { "group": "nodesim", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "node sim: live FAN node",
+      "type": "process",
+      "command": "python",
+      "args": ["-u", "tools/simulate_node.py", "--live", "--node", "fan"],
+      "options": { "cwd": "${workspaceFolder}/firmware/micropython" },
+      "isBackground": true,
+      "presentation": { "group": "nodesim", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      // Both boxes at once - this is what the app's configs expect to see.
+      "label": "node sim: live BOTH nodes",
+      "dependsOrder": "parallel",
+      "dependsOn": ["node sim: live LASER node", "node sim: live FAN node"],
       "problemMatcher": []
     },
     {

@@ -1,15 +1,17 @@
 """Run a node on the PC, with its display rendered to a PNG.
 
     python tools/simulate_node.py                       # every scenario -> out/
-    python tools/simulate_node.py --scenario binleak
-    python tools/simulate_node.py --live                # act as a real node on the LAN
+    python tools/simulate_node.py --window              # ...in a window, arrows to browse
+    python tools/simulate_node.py --live --window       # a live box, on screen
+    python tools/simulate_node.py --live                # headless, PNG per frame
 
 There is no hardware in this, and no mock of the UI either: it imports the real
 lumosair.st7789 and lumosair.display_ui and decodes the SPI command stream the
 driver emits (CASET / RASET / RAMWR) into a framebuffer. What you see is what
 the panel would show, pixel for pixel, including every layout bug.
 
-Standalone mode paints a set of scenarios and writes PNGs. --live turns it into
+--window opens a real window (tkinter, stdlib) so you can watch it; without it the
+panel is written to a PNG. Standalone mode paints a set of scenarios; --live turns it into
 a stand-in for a real box: it publishes telemetry on UDP 47810, accepts commands
 on 47811 and listens for the desktop app's status broadcast on 47812, so you can
 run the app with Source = Udp and watch the box screen react. Ctrl+C to stop.
@@ -24,6 +26,7 @@ import argparse
 import base64
 import json
 import math
+import os
 import socket
 import struct
 import sys
@@ -199,7 +202,7 @@ class VirtualPanel:
                 rows.append(bytes(row))
         return rows
 
-    def save_png(self, path, scale=2):
+    def png_bytes(self, scale=2):
         rows = self.rgb_rows(scale)
         raw = b"".join(b"\x00" + r for r in rows)
         w, h = self.w * scale, self.h * scale
@@ -208,11 +211,18 @@ class VirtualPanel:
             return (struct.pack(">I", len(data)) + tag + data
                     + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF))
 
-        png = (b"\x89PNG\r\n\x1a\n"
-               + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
-               + chunk(b"IDAT", zlib.compress(raw, 9))
-               + chunk(b"IEND", b""))
-        Path(path).write_bytes(png)
+        return (b"\x89PNG\r\n\x1a\n"
+                + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+                + chunk(b"IDAT", zlib.compress(raw, 9))
+                + chunk(b"IEND", b""))
+
+    def save_png(self, path, scale=2):
+        # Written to a temp file and renamed, because in --live this is rewritten
+        # every frame and something (VS Code's preview) is usually reading it.
+        path = Path(path)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_bytes(self.png_bytes(scale))
+        os.replace(tmp, path)
         return path
 
 
@@ -297,96 +307,191 @@ def run_scenarios(names, out_dir, scale):
 # ======================================================================================
 # live mode — behave like a real box on the LAN
 # ======================================================================================
-def run_live(node_id, out_dir, scale, period, telemetry_port, cmd_port, status_port):
-    panel = VirtualPanel()
-    tft = st7789.ST7789(panel, panel.cs, panel.dc, rotation=1)
-    tft.init()
-    scr = display_ui.Screen(tft, node_id)
-    scr.splash("simulated node")
-    time.sleep(0.4)
-    scr.layout()
+class LiveNode:
+    """A stand-in box: emits telemetry, takes commands, shows what the PC concludes."""
 
-    tx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    tx.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    rx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    rx.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    rx.bind(("", status_port))
-    rx.setblocking(False)
-    cmd = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    cmd.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    cmd.bind(("", cmd_port))
-    cmd.setblocking(False)
-
-    names = FAN_CH if node_id == "fan" else LASER_CH
-    base = {"cyc_dp": 168.0, "bin": -42.0, "pitot": 62.0,
+    CHANNELS = {"laser": ["cyc_dp", "bin", "pitot", "run_in", "encl"], "fan": ["fan_in"]}
+    BASE = {"cyc_dp": 168.0, "bin": -42.0, "pitot": 62.0,
             "run_in": -96.0, "encl": -19.0, "fan_in": -214.0}
-    level, mode, rec, sev, cfm, src, head = 7, "manual", None, "stale", None, "no PC link", "Waiting for the desktop app"
-    seq = 0
-    last_status = 0.0
-    png = out_dir / ("screen_live_%s.png" % node_id)
+
+    def __init__(self, node_id, telemetry_port=47810, cmd_port=47811, status_port=47812,
+                 period=1.0, ip="192.168.1.42", log=print):
+        self.node_id, self.period, self.ip, self.log = node_id, period, ip, log
+        self.telemetry_port = telemetry_port
+        self.panel = VirtualPanel()
+        self.tft = st7789.ST7789(self.panel, self.panel.cs, self.panel.dc, rotation=1)
+        self.tft.init()
+        self.scr = display_ui.Screen(self.tft, node_id)
+        self.scr.splash("simulated node")
+        self.scr.layout()
+
+        self.tx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.tx.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        self.rx = self._bind(status_port)
+        self.cmd = self._bind(cmd_port)
+
+        self.level, self.mode, self.rec = 7, "manual", None
+        self.sev, self.cfm, self.src = "stale", None, "no PC link"
+        self.head = "Waiting for the desktop app"
+        self.seq = 0
+        self.last_status = 0.0
+        self.chans = {}
+
+    @staticmethod
+    def _bind(port):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind(("", port))
+        s.setblocking(False)
+        return s
+
+    def step(self):
+        """One frame: publish, drain both inbound sockets, redraw."""
+        self.seq += 1
+        wobble = math.sin(self.seq / 9.0)
+        names = self.CHANNELS[self.node_id]
+        self.chans = {n: {"pa": round(self.BASE[n] * (0.55 + 0.045 * self.level)
+                                      * (1 + 0.012 * wobble), 2), "t": 24.0, "ok": True}
+                      for n in names}
+        frame = {"node": self.node_id, "seq": self.seq,
+                 "up": self.seq * int(self.period * 1000), "rssi": -61,
+                 "ch": self.chans, "env": {"t": 23.9, "rh": 41.0, "p": 94412}}
+        if self.node_id == "fan":
+            frame["fan"] = self.level
+        self.tx.sendto(json.dumps(frame).encode(), ("255.255.255.255", self.telemetry_port))
+
+        for m in self._drain(self.cmd):
+            c = m.get("cmd")
+            if c == "set_level":
+                self.level = max(0, min(10, int(m.get("level", self.level))))
+                self.log("  <- set_level %d" % self.level)
+            elif c:
+                self.log("  <- %s" % c)
+        for m in self._drain(self.rx):
+            if m.get("t") != "status":
+                continue
+            self.sev = m.get("sev", "ok")
+            self.cfm = m.get("cfm")
+            self.src = m.get("src", "")
+            self.head = m.get("msg", "")
+            f = m.get("fan") or {}
+            self.mode = f.get("mode", self.mode)
+            self.rec = f.get("rec")
+            if f.get("level") is not None:
+                self.level = f["level"]
+            self.last_status = time.time()
+
+        if self.last_status and time.time() - self.last_status > 10:
+            self.sev, self.cfm = "stale", None
+            self.src, self.head = "no PC link", "Desktop app not running"
+
+        self.scr.status(self.sev, ip=self.ip)
+        self.scr.flow(self.cfm, self.src)
+        self.scr.fan(self.level, self.mode, self.rec)
+        self.scr.headline(self.head, self.sev)
+        self.scr.channels([(n, self.chans[n]["pa"], True) for n in names])
+
+    @staticmethod
+    def _drain(sock):
+        out = []
+        while True:
+            try:
+                data, _ = sock.recvfrom(4096)
+                out.append(json.loads(data.decode()))
+            except (BlockingIOError, OSError, ValueError):
+                return out
+
+    def close(self):
+        for s in (self.tx, self.rx, self.cmd):
+            try:
+                s.close()
+            except OSError:
+                pass
+
+
+def run_live(node_id, out_dir, scale, period, telemetry_port, cmd_port, status_port):
     out_dir.mkdir(parents=True, exist_ok=True)
+    png = out_dir / ("screen_live_%s.png" % node_id)
+    node = LiveNode(node_id, telemetry_port, cmd_port, status_port, period)
     print("simulated %s node: telemetry -> UDP %d, commands <- %d, status <- %d"
           % (node_id, telemetry_port, cmd_port, status_port))
     print("screen written to %s after every frame. Ctrl+C to stop." % png)
-
     try:
         while True:
-            seq += 1
-            wobble = math.sin(seq / 9.0)
-            chans = {}
-            for n in names:
-                v = base[n] * (0.55 + 0.045 * level) * (1 + 0.012 * wobble)
-                chans[n] = {"pa": round(v, 2), "t": 24.0, "ok": True}
-            frame = {"node": node_id, "seq": seq, "up": seq * int(period * 1000),
-                     "rssi": -61, "ch": chans,
-                     "env": {"t": 23.9, "rh": 41.0, "p": 94412}}
-            if node_id == "fan":
-                frame["fan"] = level
-            tx.sendto(json.dumps(frame).encode(), ("255.255.255.255", telemetry_port))
-
-            try:                                          # commands from the app
-                while True:
-                    data, _ = cmd.recvfrom(2048)
-                    m = json.loads(data.decode())
-                    if m.get("cmd") == "set_level":
-                        level = max(0, min(10, int(m.get("level", level))))
-                        print("  <- set_level %d" % level)
-                    else:
-                        print("  <- %s" % m.get("cmd"))
-            except (BlockingIOError, OSError, ValueError):
-                pass
-
-            try:                                          # status from the app
-                while True:
-                    data, _ = rx.recvfrom(2048)
-                    m = json.loads(data.decode())
-                    if m.get("t") != "status":
-                        continue
-                    sev = m.get("sev", "ok")
-                    cfm = m.get("cfm")
-                    src = m.get("src", "")
-                    head = m.get("msg", "")
-                    f = m.get("fan") or {}
-                    mode = f.get("mode", mode)
-                    rec = f.get("rec")
-                    if f.get("level") is not None:
-                        level = f["level"]
-                    last_status = time.time()
-            except (BlockingIOError, OSError, ValueError):
-                pass
-
-            if last_status and time.time() - last_status > 10:
-                sev, cfm, src, head = "stale", None, "no PC link", "Desktop app not running"
-
-            scr.status(sev, ip="192.168.1.42")
-            scr.flow(cfm, src)
-            scr.fan(level, mode, rec)
-            scr.headline(head, sev)
-            scr.channels([(n, chans[n]["pa"], True) for n in names])
-            panel.save_png(png, scale)
+            node.step()
+            node.panel.save_png(png, scale)
             time.sleep(period)
     except KeyboardInterrupt:
         print("\nstopped")
+    finally:
+        node.close()
+
+
+# ======================================================================================
+# a window, so you can actually watch the thing
+# ======================================================================================
+def run_window(node_id, live, scenario, scale, period, telemetry_port, cmd_port, status_port):
+    """Show the panel in a real window (tkinter, stdlib).
+
+    Live: steps the node on a timer. Otherwise: shows a scenario, and Left/Right
+    step through them so you can flick between states and compare layouts.
+    """
+    import tkinter as tk
+
+    root = tk.Tk()
+    root.configure(bg="#101418")
+    root.resizable(False, False)
+    label = tk.Label(root, bd=0, bg="#101418")
+    label.pack(padx=10, pady=(10, 4))
+    caption = tk.Label(root, bg="#101418", fg="#8a949e",
+                       font=("Consolas", 9), anchor="w", justify="left")
+    caption.pack(fill="x", padx=12, pady=(0, 8))
+    keep = {}
+
+    def show(panel, text):
+        img = tk.PhotoImage(data=base64.b64encode(panel.png_bytes(scale)))
+        keep["img"] = img                       # PhotoImage is GC'd if not referenced
+        label.configure(image=img)
+        caption.configure(text=text)
+
+    if live:
+        node = LiveNode(node_id, telemetry_port, cmd_port, status_port, period,
+                        log=lambda m: caption.configure(text=m.strip()))
+        root.title("LumosAir - simulated %s node (live)" % node_id)
+        print("simulated %s node: telemetry -> UDP %d, commands <- %d, status <- %d"
+              % (node_id, telemetry_port, cmd_port, status_port))
+
+        def tick():
+            node.step()
+            show(node.panel, "frame %d   level %d   %s   %s"
+                             % (node.seq, node.level, node.sev, node.src))
+            root.after(int(period * 1000), tick)
+
+        root.protocol("WM_DELETE_WINDOW", lambda: (node.close(), root.destroy()))
+        tick()
+    else:
+        names = sorted(SCENARIOS)
+        idx = [names.index(scenario) if scenario in names else 0]
+
+        def draw():
+            name = names[idx[0]]
+            sc = SCENARIOS[name]
+            panel = VirtualPanel()
+            paint(panel, sc.get("node", "laser"), sc)
+            root.title("LumosAir - box screen: %s" % name)
+            show(panel, "%s   (%d of %d)   left/right arrows to change, Esc to close"
+                        % (name, idx[0] + 1, len(names)))
+
+        def move(d):
+            idx[0] = (idx[0] + d) % len(names)
+            draw()
+
+        root.bind("<Left>", lambda e: move(-1))
+        root.bind("<Right>", lambda e: move(1))
+        root.bind("<Escape>", lambda e: root.destroy())
+        draw()
+
+    root.mainloop()
 
 
 def main() -> int:
@@ -395,6 +500,8 @@ def main() -> int:
     ap.add_argument("--scenario", choices=sorted(SCENARIOS) + ["all"], default="all")
     ap.add_argument("--node", choices=["laser", "fan"], default="laser")
     ap.add_argument("--live", action="store_true", help="act as a real node on the LAN")
+    ap.add_argument("--window", action="store_true",
+                    help="show the panel in a window instead of writing PNGs")
     ap.add_argument("--scale", type=int, default=2, help="PNG pixel scale")
     ap.add_argument("--period", type=float, default=1.0, help="live: seconds per frame")
     ap.add_argument("--udp", type=int, default=47810)
@@ -403,6 +510,10 @@ def main() -> int:
     ap.add_argument("--out", default=str(ROOT / "out"))
     a = ap.parse_args()
     out = Path(a.out)
+    if a.window:
+        run_window(a.node, a.live, a.scenario if a.scenario != "all" else "healthy",
+                   a.scale, a.period, a.udp, a.cmd_port, a.status_port)
+        return 0
     if a.live:
         run_live(a.node, out, a.scale, a.period, a.udp, a.cmd_port, a.status_port)
         return 0

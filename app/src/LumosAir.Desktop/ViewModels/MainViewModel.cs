@@ -427,10 +427,19 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         if ((DateTime.Now - _lastBroadcast).TotalSeconds >= Math.Max(0.25, fc.StatusBroadcastSeconds))
         {
             _lastBroadcast = DateTime.Now;
-            string payload = StatusPayload.Build(snap, FanMode, snap.FanLevel,
-                IsAuto ? FanReason : null);
-            try { await _source.BroadcastStatusAsync(payload, CancellationToken.None); }
-            catch { /* the displays fall back to their own readings */ }
+            // Build inside the try as well: this runs from an async void handler on a
+            // timer, so anything that escapes here becomes one modal dialog per tick.
+            try
+            {
+                string payload = StatusPayload.Build(snap, FanMode, snap.FanLevel,
+                    IsAuto ? FanReason : null);
+                await _source.BroadcastStatusAsync(payload, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                // The displays fall back to their own readings.
+                Status = $"Status broadcast failed: {ex.Message}";
+            }
         }
     }
 
