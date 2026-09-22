@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
 using LumosAir.Core.Config;
+using LumosAir.Core.Control;
 using LumosAir.Core.Diagnostics;
 using LumosAir.Core.Telemetry;
 
@@ -63,6 +64,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
     public static string LogPath => Path.Combine(DataDir, $"log-{DateTime.Now:yyyyMMdd}.csv");
 
     private readonly DispatcherTimer _timer;
+    private AutoFanController _autoFan;
+    private DateTime _lastBroadcast = DateTime.MinValue;
     private SystemConfig _config;
     private DiagnosticsEngine _engine;
     private ITelemetrySource? _source;
@@ -98,6 +101,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         foreach (var p in _config.Profiles) Profiles.Add(p);
         _selectedProfile = _config.ActiveProfile;
         _manualFanLevel = _engine.ManualFanLevel;
+        _autoFan = new AutoFanController(_config.FanControl);
+        _fanMode = _config.FanControl is { Enabled: true, StartInAuto: true } ? FanMode.Auto : FanMode.Manual;
         _sourceKind = _config.Transport.MqttEnabled ? SourceKind.Mqtt : SourceKind.Simulator;
         _mqttHost = _config.Transport.MqttHost;
 
@@ -160,6 +165,28 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             Refresh();
         }
     }
+
+    public Array FanModes { get; } = Enum.GetValues(typeof(FanMode));
+
+    private FanMode _fanMode;
+    /// <summary>Auto lets the app set the fan; Manual leaves you in charge. Always switchable.</summary>
+    public FanMode FanMode
+    {
+        get => _fanMode;
+        set
+        {
+            if (!Set(ref _fanMode, value)) return;
+            _autoFan.Reset();
+            OnPropertyChanged(nameof(IsAuto));
+            FanReason = value == FanMode.Auto
+                ? "Auto: the app will set the level"
+                : "Manual: set the level on the controller";
+        }
+    }
+    public bool IsAuto => _fanMode == FanMode.Auto;
+
+    private string _fanReason = "Manual: set the level on the controller";
+    public string FanReason { get => _fanReason; set => Set(ref _fanReason, value); }
 
     private int _manualFanLevel;
     public int ManualFanLevel
@@ -290,6 +317,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         {
             _config = SystemConfig.Load(ConfigPath);
             _engine.Reconfigure(_config);
+            _autoFan = new AutoFanController(_config.FanControl);
             Profiles.Clear();
             foreach (var p in _config.Profiles) Profiles.Add(p);
             SelectedProfile = _config.ActiveProfile;
@@ -360,6 +388,8 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
                 DriftColor = c.Drift is { } d3 ? Math.Abs(d3) >= 0.3 ? SeverityBrush(Severity.Warning) : Math.Abs(d3) >= 0.15 ? SeverityBrush(Severity.Advice) : SeverityBrush(Severity.Ok) : Brushes.Gray
             });
 
+        if (live) ControlAndBroadcast(snap);
+
         if (live)
         {
             History.Add((DateTime.Now, snap.FlowCfm, snap.CycloneInletFpm ?? 0));
@@ -367,6 +397,40 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             History.RemoveAll(h => h.t < cutoff);
             HistoryUpdated?.Invoke();
             LogCsv(snap);
+        }
+    }
+
+    /// <summary>Auto-mode fan commands, and the status broadcast that feeds the box displays.</summary>
+    private async void ControlAndBroadcast(DiagnosticSnapshot snap)
+    {
+        if (_source is null) return;
+        var now = DateTimeOffset.Now;
+        var fc = _config.FanControl;
+
+        if (IsAuto && fc.Enabled)
+        {
+            var decision = _autoFan.Evaluate(snap, snap.FanLevel, now);
+            FanReason = "Auto: " + decision.Reason;
+            if (decision.TargetLevel is { } level)
+            {
+                string json = $"{{\"cmd\":\"set_level\",\"level\":{level},\"mode\":\"auto\"}}";
+                try
+                {
+                    await _source.SendCommandAsync(fc.ControlNode, json, CancellationToken.None);
+                    ManualFanLevel = level;
+                    Status = $"Auto set fan level {level} — {decision.Reason}";
+                }
+                catch (Exception ex) { Status = $"Could not set fan level: {ex.Message}"; }
+            }
+        }
+
+        if ((DateTime.Now - _lastBroadcast).TotalSeconds >= Math.Max(0.25, fc.StatusBroadcastSeconds))
+        {
+            _lastBroadcast = DateTime.Now;
+            string payload = StatusPayload.Build(snap, FanMode, snap.FanLevel,
+                IsAuto ? FanReason : null);
+            try { await _source.BroadcastStatusAsync(payload, CancellationToken.None); }
+            catch { /* the displays fall back to their own readings */ }
         }
     }
 

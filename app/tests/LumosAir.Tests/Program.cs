@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using LumosAir.Core.Config;
+using LumosAir.Core.Control;
 using LumosAir.Core.Diagnostics;
 using LumosAir.Core.Model;
 using LumosAir.Core.Telemetry;
@@ -270,6 +271,110 @@ await T("fan off is reported as info only", () =>
     var snap = RunScenario(DefaultSystems.OptionA(), "off");
     True(snap.Findings.Any(f => f.Code == "fan-off"), "fan-off");
     True(snap.Overall <= Severity.Info, $"overall {snap.Overall}");
+});
+
+Console.WriteLine("Fan control");
+static (DiagnosticSnapshot snap, AutoFanController ctl, FanControlConfig cfg) FanFixture(
+    int recommended, Severity worst = Severity.Ok, int dwell = 30)
+{
+    var cfg = new FanControlConfig { Enabled = true, MinLevel = 3, MaxLevel = 10, DwellSeconds = dwell, MinStepDown = 1 };
+    var findings = worst == Severity.Ok
+        ? new List<Finding>()
+        : new List<Finding> { new("x", worst, "t", "d") };
+    var snap = new DiagnosticSnapshot { RecommendedLevel = recommended, Findings = findings, FanLevel = 5 };
+    return (snap, new AutoFanController(cfg), cfg);
+}
+
+await T("auto raises the fan immediately when more is needed", () =>
+{
+    var (snap, ctl, _) = FanFixture(8);
+    var d = ctl.Evaluate(snap, 5, DateTimeOffset.UtcNow);
+    True(d.TargetLevel == 8 && d.Urgent, $"{d.TargetLevel} {d.Reason}");
+});
+await T("auto does not step down until the dwell time has passed", () =>
+{
+    var (snap, ctl, cfg) = FanFixture(4);
+    var t0 = DateTimeOffset.UtcNow;
+    True(ctl.Evaluate(snap, 8, t0).TargetLevel is null, "should confirm first");
+    True(ctl.Evaluate(snap, 8, t0.AddSeconds(cfg.DwellSeconds - 5)).TargetLevel is null, "still waiting");
+    var d = ctl.Evaluate(snap, 8, t0.AddSeconds(cfg.DwellSeconds + 1));
+    True(d.TargetLevel == 4 && !d.Urgent, $"{d.TargetLevel} {d.Reason}");
+});
+await T("a rise cancels a pending step down", () =>
+{
+    var (low, ctl, cfg) = FanFixture(4);
+    var t0 = DateTimeOffset.UtcNow;
+    ctl.Evaluate(low, 8, t0);
+    var high = new DiagnosticSnapshot { RecommendedLevel = 9, Findings = Array.Empty<Finding>() };
+    True(ctl.Evaluate(high, 8, t0.AddSeconds(5)).TargetLevel == 9, "should raise");
+    True(ctl.Evaluate(low, 9, t0.AddSeconds(6)).TargetLevel is null, "dwell restarts");
+});
+await T("a critical finding pins the fan at maximum", () =>
+{
+    var (snap, ctl, cfg) = FanFixture(4, Severity.Critical);
+    var d = ctl.Evaluate(snap, 5, DateTimeOffset.UtcNow);
+    True(d.TargetLevel == cfg.MaxLevel && d.Urgent, $"{d.TargetLevel} {d.Reason}");
+});
+await T("auto respects the configured level limits", () =>
+{
+    var cfg = new FanControlConfig { Enabled = true, MinLevel = 4, MaxLevel = 7 };
+    var ctl = new AutoFanController(cfg);
+    var snap = new DiagnosticSnapshot { RecommendedLevel = 10, Findings = Array.Empty<Finding>() };
+    True(ctl.Evaluate(snap, 5, DateTimeOffset.UtcNow).TargetLevel == 7, "clamped to MaxLevel");
+});
+await T("automatic control can be switched off entirely", () =>
+{
+    var ctl = new AutoFanController(new FanControlConfig { Enabled = false });
+    var snap = new DiagnosticSnapshot { RecommendedLevel = 9, Findings = Array.Empty<Finding>() };
+    True(ctl.Evaluate(snap, 3, DateTimeOffset.UtcNow).TargetLevel is null, "no command when disabled");
+});
+await T("the same level is not re-sent every tick", () =>
+{
+    var (snap, ctl, _) = FanFixture(8);
+    var t0 = DateTimeOffset.UtcNow;
+    True(ctl.Evaluate(snap, 5, t0).TargetLevel == 8, "first send");
+    True(ctl.Evaluate(snap, 5, t0.AddSeconds(1)).TargetLevel is null, "no repeat");
+});
+await T("status payload carries what the box displays need", () =>
+{
+    var cfg = DefaultSystems.OptionA();
+    var snap = RunScenario(cfg, "clog");
+    string json = StatusPayload.Build(snap, FanMode.Auto, 7, "auto: holding");
+    using var doc = System.Text.Json.JsonDocument.Parse(json);
+    var root = doc.RootElement;
+    True(root.GetProperty("t").GetString() == "status", "type");
+    True(root.GetProperty("cfm").GetDouble() > 50, "cfm");
+    True(root.GetProperty("sev").GetString() == "critical", root.GetProperty("sev").GetString()!);
+    True(root.GetProperty("fan").GetProperty("level").GetInt32() == 7, "level");
+    True(root.GetProperty("fan").GetProperty("mode").GetString() == "auto", "mode");
+    True(root.GetProperty("msg").GetString()!.Length is > 0 and <= 38, "headline fits the screen");
+    True(json.Length < 300, $"payload {json.Length} bytes fits one datagram");
+});
+await Test("auto mode drives the simulated fan back up after a drop", async () =>
+{
+    var cfg = DefaultSystems.OptionA();
+    cfg.FanControl.DwellSeconds = 1;
+    var sim = new SimulatedTelemetrySource(cfg) { FanLevel = 3 };
+    var engine = new DiagnosticsEngine(cfg);
+    var ctl = new AutoFanController(cfg.FanControl);
+    var clock = DateTimeOffset.UtcNow;
+    engine.Clock = () => clock;
+    int level = 3;
+    for (int i = 0; i < 120; i++)
+    {
+        clock = clock.AddMilliseconds(250);
+        sim.FanLevel = level;
+        foreach (var f in sim.Generate(clock)) engine.Ingest(f);
+        var snap = engine.Evaluate();
+        var d = ctl.Evaluate(snap, level, clock);
+        if (d.TargetLevel is { } t)
+        {
+            await sim.SendCommandAsync("fan", $"{{\"cmd\":\"set_level\",\"level\":{t}}}", CancellationToken.None);
+            level = sim.FanLevel;
+        }
+    }
+    True(level >= 7, $"auto should have raised the fan, ended at {level}");
+    True(sim.Commands.Any(c => c.Json.Contains("set_level")), "a set_level command was sent");
 });
 
 Console.WriteLine();

@@ -115,9 +115,29 @@ public sealed class SimulatedTelemetrySource : ITelemetrySource
         return Faults.NoisePa * Math.Sqrt(-2 * Math.Log(u1)) * Math.Cos(2 * Math.PI * u2);
     }
 
+    /// <summary>Commands the app has sent, so tests (and the UI) can see what would go out.</summary>
+    public List<(string Node, string Json)> Commands { get; } = new();
+    public string? LastStatusBroadcast { get; private set; }
+
     public Task SendCommandAsync(string node, string json, CancellationToken ct)
     {
+        Commands.Add((node, json));
+        if (json.Contains("\"set_level\"") && FollowFanCommands)
+        {
+            int i = json.IndexOf("\"level\"", StringComparison.Ordinal);
+            if (i >= 0 && int.TryParse(new string(json[(i + 7)..].Where(char.IsDigit).ToArray()), out var lvl))
+                FanLevel = Math.Clamp(lvl, 0, 10);
+        }
         StatusChanged?.Invoke($"Simulator: command to {node}: {json}");
+        return Task.CompletedTask;
+    }
+
+    /// <summary>When true the simulated fan obeys set_level, so Auto mode can be exercised.</summary>
+    public bool FollowFanCommands { get; set; } = true;
+
+    public Task BroadcastStatusAsync(string json, CancellationToken ct)
+    {
+        LastStatusBroadcast = json;
         return Task.CompletedTask;
     }
 

@@ -1,6 +1,6 @@
 # Lumos Ultra Exhaust Monitor (LumosAir)
 
-Cheap, fully local airflow monitoring for a laser-engraver exhaust. Differential-pressure sensors on two ESP32 boards feed a Windows app. The app shows live CFM and duct air speeds, tells you which fan level to use, and diagnoses problems:
+Cheap, fully local airflow monitoring for a laser-engraver exhaust. Two identical boxes — an ESP32 running MicroPython, pressure sensors and a 2" colour display — feed a Windows app. The app shows live CFM and duct air speeds, sets or recommends the fan level, and diagnoses problems:
 
 - a clogged or kinked duct
 - leaking joints
@@ -75,30 +75,58 @@ Approximate prices as of September 2026; check before ordering. The full list is
 | **Pitot flow channel** (CFM) | SDP810-500Pa + Dwyer 166-6-CF pitot-static probe + 1/8" FNPT boss + tubing/adapters | **$210–295** |
 | **High-suction static channel** (bin, run start, fan inlet) | CFSensor XGZP6897D ±1 kPa + tubing + wall tap | **$11–18** |
 | Air-density channel (optional) | BME280 breakout | $5–10 |
+| **Box** (either node) | Hammond 1554H2GYCL + 2.0" ST7789 display + 6 bulkheads + gland + standoffs | **$70–95** |
 
 ### Per node
 
 | Node | Contents | Approx. cost |
 |---|---|---|
-| **Laser node** | ESP32, TCA9548A mux, BME280, 3× SDP810, 2× XGZP6897D, Dwyer pitot + boss, tubing, taps, enclosure, USB supply | **$345–485** |
-| **Fan node** | ESP32, 1× XGZP6897D, tap, enclosure, USB supply | **$35–50** |
-| **Complete system** (excluding the separator) | both nodes + the 5 ft rigid 4" measuring spool | **≈ $400–570** |
-| **Measure-first starter kit** | fan node + an ESP32 with only the pitot channel and the rigid spool | **≈ $300–400** |
+| **Laser node** | ESP32, TCA9548A mux, BME280, 3× SDP810, 2× XGZP6897D, Dwyer pitot + boss, tubing, taps, box + display | **$400–560** |
+| **Fan node** | ESP32, 1× XGZP6897D, tap, box + display | **$95–125** |
+| **Complete system** (excluding the separator) | both nodes + the 5 ft rigid 4" measuring spool | **≈ $520–700** |
+| **Measure-first starter kit** | fan node + an ESP32 with only the pitot channel and the rigid spool | **≈ $370–470** |
 
 The Dwyer 166-6-CF pitot ($160–220 new) is most of the difference. It earns its place: its ASHRAE tip needs no calibration (coefficient 1.000), and at 1/8" it is one of the few probes Dwyer rates for a duct as small as 4". A generic probe is cheaper but has an unknown coefficient, so it has to be calibrated against something else.
 
 ---
 
+## The boxes
+
+Both nodes use the **same enclosure with the same bulkhead pattern** (Hammond
+1554H2GYCL, clear lid); the fan box plugs the ports it doesn't use. The fitment
+model is a CadQuery script, so the STEP, STL, drawings, 1:1 drill template and the
+clearance report are all generated from one source — see [`cad/`](cad/).
+
+![Enclosure fitment](cad/out/render_top.png)
+
+Because the lid is clear polycarbonate, the 2" display needs no cut-out: it sits on
+standoffs and reads through the lid, and the box stays sealed. The screen shows the
+status colour, system CFM, fan level and mode, the top finding, and every channel on
+that node — and keeps showing live pressures if the PC app isn't running.
+
+## Fan control: automatic or manual
+
+The app's fan card has a **Control** selector:
+
+- **Manual** — it recommends a level and you set the dial; nothing is ever sent.
+- **Auto** — it sends the level to the fan node. Raising speed happens immediately
+  (and a critical finding pins the fan at maximum); easing back only happens after
+  the lower recommendation has held for the dwell time, so the fan doesn't hunt.
+
+The fan node's output pin stays disabled until you verify the CLOUDLINE UIS pinout
+yourself — until then Auto still works as an advisory, on screen and on the box.
+
 ## Repository layout
 
 ```
+cad/         parametric enclosure fitment model (CadQuery) + generated STEP/STL/views
 docs/        DESIGN.md (start here), BOM.csv, system diagram, screenshots, model output
-firmware/    ESP32 PlatformIO project: laser node + fan node
+firmware/micropython/   ESP32 node firmware: sensors, display, Wi-Fi, OTA
 app/
   src/LumosAir.Core      physics model, diagnostics, UDP / MQTT / simulator (no NuGet dependencies)
   src/LumosAir.Desktop   WPF monitor app
   src/LumosAir.Cli       `lumosair` CLI: model / simulate / listen
-  tests/LumosAir.Tests   dependency-free test runner (30 tests)
+  tests/LumosAir.Tests   dependency-free test runner (41 tests)
   config/                sample system.json (Option A / B, and C = today's system)
 ```
 
@@ -118,15 +146,28 @@ dotnet run --project src/LumosAir.Cli -- model --need-cfm 200   # "can my fan do
 - **Logs:** a CSV row is written to `%APPDATA%\LumosAir\` every 5 s.
 - **Other SDKs:** add `-p:AppTfm=net8.0` or `-p:AppTfm=net10.0`.
 
-## Firmware (ESP32)
+## Firmware (MicroPython on ESP32)
 
-1. Copy `firmware/include/lumosair_config.example.h` to `lumosair_config.h`. Set your Wi-Fi and check the sensor map. This file is git-ignored.
-2. Flash each node:
-   - `pio run -e laser -t upload`
-   - `pio run -e fan -t upload`
-3. Open the serial monitor at 115200 baud. Every channel should report `ok`.
+Developed in VS Code with the MicroPico extension — full details in
+[`firmware/micropython/README.md`](firmware/micropython/README.md).
 
-The firmware compiles against the Arduino-ESP32 2.0.17 core. It reads the sensors through a TCA9548A multiplexer and publishes JSON over UDP broadcast and/or MQTT. It also accepts `zero`, `clear_zero`, `info` and `reboot` commands, and supports OTA updates.
+1. Flash MicroPython once over USB (`esptool`).
+2. Copy `config_example.py` to `config.py`: Wi-Fi, node id, channel map, pins.
+3. Upload with MicroPico or `mpremote fs cp -r lib : && mpremote fs cp main.py config.py :`.
+
+After that the boxes update over Wi-Fi — no cable, no taking them off the duct:
+
+```
+python tools/serve_update.py               # on the PC
+python tools/send_command.py laser update  # or the app
+```
+
+The node fetches a manifest, downloads only the files whose SHA-256 changed, and
+reboots. It reads the sensors through a TCA9548A multiplexer, publishes JSON over
+UDP and/or MQTT, drives the display, and accepts `zero`, `clear_zero`, `set_level`,
+`info`, `update` and `reboot`.
+
+Host tests (no hardware needed): `python firmware/micropython/tests/test_firmware.py` — 31 checks.
 
 ### Telemetry format
 
@@ -142,8 +183,9 @@ Commands go to UDP port 47811 or `lumosair/<node>/cmd`, e.g. `{"cmd":"zero"}`.
 
 ## Status
 
-- **Working and tested:** the physics model, the diagnostics (all 9 simulated faults detected, no false alarms), the desktop app and the CLI. 32 automated tests.
-- **Firmware:** compile-verified, not yet run on hardware.
+- **Working and tested:** the physics model, the diagnostics (all 9 simulated faults detected, no false alarms), automatic fan control, the desktop app and the CLI. 41 app tests plus 31 firmware tests, all on the PC.
+- **Firmware:** MicroPython, driver maths and payloads unit-tested on the PC, not yet run on hardware.
+- **Fan output pin:** disabled until the CLOUDLINE UIS pinout is verified; Auto mode is advisory until then.
 - **Needs calibration:** the fan curve, cyclone loss coefficient and pitot profile factor are estimates until they are measured on the real system. [DESIGN.md §6](docs/DESIGN.md#6-commissioning) walks through calibrating them.
 
 ## Safety note

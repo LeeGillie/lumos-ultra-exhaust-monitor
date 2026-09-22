@@ -121,6 +121,12 @@ public sealed class MqttTelemetrySource : ITelemetrySource
         return SendAsync(BuildPublish($"{_root}/{node}/cmd", Encoding.UTF8.GetBytes(json)), ct);
     }
 
+    public Task BroadcastStatusAsync(string json, CancellationToken ct)
+    {
+        if (_stream is null) return Task.CompletedTask;   // nodes fall back to their own readings
+        return SendAsync(BuildPublish($"{_root}/system/status", Encoding.UTF8.GetBytes(json)), ct);
+    }
+
     // ---------- packet building ----------
 
     private byte[] BuildConnect()

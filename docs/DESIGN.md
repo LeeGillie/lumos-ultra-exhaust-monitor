@@ -1,12 +1,12 @@
 # LumosAir – Exhaust Airflow Monitor for the Lumos Ultra
 
-*Design document, rev 2 — September 2026* (rev 2: named the pitot probe, added the rigid measuring spool vs. flex duct distinction, two-axis traverse, and Option C — today's system)
+*Design document, rev 3 — September 2026* (rev 2: named the pitot probe, the rigid measuring spool vs. flex duct distinction, two-axis traverse, Option C. rev 3: identical enclosures with a fitment model, a display in each box, MicroPython firmware, and automatic fan control with manual override)
 
 LumosAir is a low-cost, fully local system that measures airflow along the Lumos Ultra exhaust path and tells you when to raise the fan speed. It also flags a clogged duct, a leaking joint, a failing separator or a leaking dust bin. It has three parts:
 
-1. **Sensor nodes**: two ESP32 boards with differential-pressure sensors connected to small tap holes in the duct.
-2. **Transport**: UDP broadcast on the LAN (no setup), or MQTT so the readings can also go into Home Assistant.
-3. **LumosAir desktop app** (.NET / WPF). It holds a physics model of the duct path, shows live CFM and air speeds, and diagnoses problems. A built-in simulator lets you test all of this before any hardware exists.
+1. **Sensor nodes**: two identical boxes, each an ESP32 running MicroPython with differential-pressure sensors on small tap holes, and a 2" colour display showing live readings.
+2. **Transport**: UDP broadcast on the LAN (no setup), or MQTT so the readings can also go into Home Assistant. The PC broadcasts a status summary back, which is what the box displays show.
+3. **LumosAir desktop app** (.NET / WPF). It holds a physics model of the duct path, shows live CFM and air speeds, diagnoses problems, and can drive the fan automatically or leave it to you. A built-in simulator lets you test all of this before any hardware exists.
 
 ![System diagram](system-diagram.svg)
 
@@ -184,8 +184,12 @@ See `BOM.csv` for the full list. Prices are approximate as of September 2026; ch
 | 3/16" ID silicone tubing, 10 m (+ short 1/8" and 1/4" ID pieces and reducers) | 1 | ~$15–20 |
 | Barbed tap fittings or printed saddles | 8 | ~$10 |
 | 4" rigid galvanized pipe, 5 ft + couplers + foil tape | 1 | ~$20–35 |
-| Enclosures, USB 5 V supplies, Dupont/JST leads | 2 | ~$30 |
-| **Total (excluding cyclone)** | | **≈ $390–540** |
+| Hammond 1554H2GYCL enclosure (clear lid) | 2 | ~$25–35 ea |
+| 2.0" ST7789 240×320 display module | 2 | ~$9 ea (2-pack $17.99) |
+| Ø8 mm bulkhead barbs + blanking plugs | 12 | ~$15 total |
+| Cable glands, M3 standoff kit, perfboard | 1 set | ~$20 |
+| USB 5 V supplies, Dupont/JST leads | 2 | ~$20 |
+| **Total (excluding cyclone)** | | **≈ $500–680** |
 
 The Dwyer is the single largest line item outside the separator. It is worth it here because the pitot is the reference every other channel is compared against, and because at 1/8" it is one of the few probes rated for a 4" duct. New distributor pricing sits around $160–$220; surplus listings are sometimes half that. A generic probe will work, but then its coefficient is unknown and has to be calibrated against something else.
 
@@ -201,13 +205,95 @@ The Dwyer is the single largest line item outside the separator. It is worth it 
 
 ## 6. Commissioning
 
-1. **Flash** both nodes: `pio run -e laser -t upload`, then `-e fan`. Watch the serial monitor; every channel should print `ok`.
+1. **Flash** both nodes with MicroPython, copy `lib/`, `main.py` and each box's `config.py` (see `firmware/micropython/README.md`). The REPL log and the box display should show every channel `ok`.
 2. **Zero**: fan off, lid closed, wait 10 s, then click **Zero sensors** in the app. Offsets are stored on each node.
 3. **Fan curve** (optional but valuable): record CFM and `fan_in` at levels 1–10. Put the measured points into `fan.curveCfm` / `fan.curvePa`. The fan's pressure is about `fan_in` plus the loss downstream of the fan.
 4. **Cyclone K**: at level 10, K = `cyc_dp` ÷ (½ρV²) using the cyclone inlet velocity. Enter it in `cyclone.k`.
 5. **Pitot traverse**: run the two-axis six-point traverse from §3 (12 readings), average the square roots of the readings, and set `profileFactor` = mean ÷ centreline. Then return the probe to the 2.000" centreline and lock the compression fitting.
 6. **Baseline**: with a clean duct and an empty drum, run at your normal level and click **Capture baseline**. From then on, drift is measured against this known-good state.
 7. **Verify**: engrave 25 coins, weigh the drum catch, and look inside the 6" run just after the 4"→6" expansion.
+
+---
+
+## 6a. The boxes
+
+Both nodes live in the **same enclosure with the same bulkhead pattern**: a Hammond
+1554H2GYCL (180 × 120 × 60.5 mm, clear polycarbonate lid). The fan box simply plugs
+the ports it doesn't use. One box design, one drilling template, one spares list.
+
+![Enclosure fitment](../cad/out/render_top.png)
+
+| | |
+|---|---|
+| Bulkheads | 6 × Ø8 mm at 24 mm pitch, 14 mm above the inside floor |
+| Cable gland | Ø12.5 mm in the end wall (USB supply; fan lead on the fan box) |
+| Lower deck | sensor carrier on 16 mm standoffs — the SDP810 barbs hang 9.7 mm below it, so tubing runs underneath instead of fighting for space |
+| MCU | ESP32 expansion board (68.6 × 53.4) on 6 mm standoffs |
+| Upper deck | 2.0" display on 34 mm standoffs, reading up through the clear lid |
+| Headroom | ~15 mm under the lid |
+
+The clear lid is doing real work here: **the display needs no cut-out**, so the box
+stays sealed against the dust it is there to monitor.
+
+The model is a script (`cad/enclosure.py`), so it stays honest — it prints part
+positions, clearances and collisions, and exits non-zero if something doesn't fit.
+`cad/README.md` covers regenerating the STEP, STL, views and the 1:1 drill template.
+
+Port assignments (same holes, different use):
+
+| Port | Laser box | Fan box |
+|---|---|---|
+| 1–6 | cyc_dp +, cyc_dp −, bin, pitot total, pitot static, encl | fan_in, then five plugs |
+
+---
+
+## 6b. The box display
+
+Each box carries a 2.0" 240×320 IPS panel (ST7789, 4-wire SPI, 56 × 40 mm). It shows
+what the node measures *and* what the PC concludes, so you can glance at the box
+while standing at the laser:
+
+- status band — green / amber / orange / red, plus the node name and IP
+- system airflow in CFM and where the number came from (pitot, taps, model)
+- fan level, Auto or Manual, and the recommended level
+- the top finding in plain words
+- every channel on that node in Pa, with a bar and a fault flag
+
+The system-level figures arrive in a small broadcast from the PC (UDP 47812, or MQTT
+`lumosair/system/status`). If the app isn't running, the screen says so and keeps
+showing live pressures.
+
+```json
+{"t":"status","cfm":142.0,"src":"pitot","sev":"warning",
+ "fan":{"level":7,"mode":"auto","rec":8},"msg":"Dust bin appears to be leaking"}
+```
+
+---
+
+## 6c. Fan control: automatic, with manual override
+
+The app has a **Control** selector on the fan card:
+
+- **Manual** — the app recommends a level; you set the dial. Nothing is ever sent.
+- **Auto** — the app sends `{"cmd":"set_level","level":N}` to the fan node.
+
+Auto is deliberately asymmetric, because the two directions have different stakes:
+
+| Situation | What happens |
+|---|---|
+| A higher level is needed | sent immediately — losing transport velocity means brass in the duct |
+| A critical finding appears | fan pinned at the configured maximum |
+| A lower level would do | only after the lower recommendation has held for the dwell time (30 s by default), and only if it's at least one level lower |
+| Same level | nothing sent; the level is re-sent at most once a minute to re-sync a node that rebooted |
+
+Limits live in `fanControl` in `system.json`: `minLevel`, `maxLevel`, `dwellSeconds`,
+`minStepDown`, `controlNode`, and `enabled` to switch automation off entirely.
+
+**The hardware side is not verified yet.** The CLOUDLINE UIS connector pinout is
+community-reverse-engineered, so the firmware ships with `FAN_OUTPUT_ENABLED = False`:
+the node accepts the level, reports it and shows it, but drives no pin. The whole
+control path can therefore be run end to end today with you as the actuator — and
+once you've checked the pinout with a meter, one config line closes the loop.
 
 ---
 

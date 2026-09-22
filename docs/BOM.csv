@@ -10,5 +10,10 @@ Silicone tubing 3/16 in ID,10 m,sensor to taps,10,
 "1/8 in FNPT boss or bulkhead fitting",2,"probe port + second traverse port 90 deg away",10-30,Weld/braze or sealed bulkhead; do not thread thin duct wall
 Barbed tap fittings / printed tap saddles,8,wall taps,10,Deburr holes inside the duct
 4-inch rigid galvanized pipe 5 ft + couplers + foil tape,1,rigid measuring spool (Option A),20-35,"Only rigid section; rest of the run stays 4""/6"" flex. Ground it"
-Enclosure + USB 5V supply + leads,2,nodes,15 each,
+Hammond 1554H2GYCL enclosure (clear lid),2,one per node,25-35,"180 x 120 x 60.5 mm; clear lid means no display cut-out"
+"2.0 in ST7789 240x320 IPS display module",2,one per node,9,"NULLLAB 2-pack ~$17.99; 56 x 40 mm; SPI"
+"Bulkhead barb fittings 8 mm + blanking plugs",12,6 per box (identical pattern),15 total,Fan box plugs the five it does not use
+"Cable gland 12.5 mm",2,USB supply lead,5 total,
+"M3 standoff/screw kit + perfboard",1 set,sensor carrier and decks,20,"16 mm standoffs under the carrier for tubing"
+USB 5V supply + leads,2,nodes,10 each,
 Cyclone separator (steel) + sealed 20-30 gal drum,1,separator,400-600,See DESIGN.md section 4 before choosing

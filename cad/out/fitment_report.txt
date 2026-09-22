@@ -1,0 +1,41 @@
+LumosAir enclosure fitment report — laser node
+Hammond 1554H2GYCL, inside 172.91 x 108.91 x 54.5 mm
+
+part                                              x                y              z
+sensor carrier board                 46.0– 166.0    3.0–  47.0  16.0– 17.6
+SDP810-500Pa #1                      50.0–  79.0    7.0–  25.0  17.6– 27.9
+SDP810-500Pa #2                      84.0– 113.0    7.0–  25.0  17.6– 27.9
+SDP810-500Pa #3                     118.0– 147.0    7.0–  25.0  17.6– 27.9
+XGZP6897D module #1                  50.0–  72.0   28.0–  44.0  17.6– 19.2
+XGZP6897D sensor #1                  55.0–  66.0   30.0–  40.8  19.2– 28.8
+XGZP6897D module #2                  78.0– 100.0   28.0–  44.0  17.6– 19.2
+XGZP6897D sensor #2                  83.0–  94.0   30.0–  40.8  19.2– 28.8
+TCA9548A mux                        106.0– 132.0   28.0–  45.0  17.6– 19.2
+BME280                              146.0– 162.0   29.0–  41.0  17.6– 19.2
+ESP32 expansion board                 4.0–  72.6   49.5– 102.9   6.0–  7.6
+ESP32-WROOM-32 DevKit                 9.0–  67.0   60.5–  90.5   7.6– 27.6
+2.0" ST7789 display PCB               8.0–  64.0   56.0–  96.0  34.0– 35.6
+display glass                        11.5–  60.5   59.5–  92.5  35.6– 39.6
+
+Clearances
+  tallest item          : display glass at 39.6 mm
+  headroom under lid    : 14.9 mm
+
+Collisions
+  none
+
+Bulkhead ports (identical on both boxes)
+  6 x Ø8.0 mm at 24.0 mm pitch, 14.0 mm above the inside floor
+  x positions from the inside back-left corner: 26.5, 50.5, 74.5, 98.5, 122.5, 146.5
+  cable gland Ø12.5 mm in the end wall at z = 20.0 mm
+    x=  26.5  cyc_dp +
+    x=  50.5  cyc_dp −
+    x=  74.5  bin
+    x=  98.5  pitot total
+    x= 122.5  pitot static
+    x= 146.5  encl
+
+Notes
+  • The lid is clear polycarbonate, so the display needs no cut-out.
+  • Tubing runs under the sensor carrier: 16 mm of standoff, barbs hang 9.7 mm.
+  • Ribs along the inside walls are ~6 mm tall; standoffs clear them.

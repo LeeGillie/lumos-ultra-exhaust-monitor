@@ -9,6 +9,9 @@ firmware/include/lumosair_config.h
 # OS
 Thumbs.db
 .DS_Store
+firmware/micropython/config.py
+firmware/micropython/manifest.json
 
-# Office lock files
-~$*
+# Python
+__pycache__/
+*.pyc

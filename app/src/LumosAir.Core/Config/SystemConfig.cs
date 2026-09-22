@@ -38,6 +38,7 @@ public sealed class SystemConfig
     /// <summary>Sensor channels published by the ESP32 nodes.</summary>
     public List<ChannelConfig> Channels { get; set; } = new();
     public Thresholds Thresholds { get; set; } = new();
+    public FanControlConfig FanControl { get; set; } = new();
     public TransportConfig Transport { get; set; } = new();
 
     public MaterialProfile ActiveProfile =>
@@ -173,11 +174,34 @@ public sealed class Thresholds
     public double SmoothingSeconds { get; set; } = 1.5;
 }
 
+/// <summary>Automatic fan management. Manual override is always available in the app.</summary>
+public sealed class FanControlConfig
+{
+    /// <summary>Master switch for automatic control. Manual advice works regardless.</summary>
+    public bool Enabled { get; set; } = true;
+    /// <summary>Start in Auto or Manual when the app opens.</summary>
+    public bool StartInAuto { get; set; }
+    /// <summary>Node that carries the fan output (see the firmware's FAN_OUTPUT_ENABLED).</summary>
+    public string ControlNode { get; set; } = "fan";
+    public int MinLevel { get; set; } = 3;
+    public int MaxLevel { get; set; } = 10;
+    /// <summary>Don't step down unless the recommendation is at least this many levels lower.</summary>
+    public int MinStepDown { get; set; } = 1;
+    /// <summary>How long a lower recommendation must hold before the fan is eased back.</summary>
+    public int DwellSeconds { get; set; } = 30;
+    /// <summary>Re-send the same level at most this often (keeps a node in step after a reboot).</summary>
+    public int RepeatSeconds { get; set; } = 60;
+    /// <summary>How often the PC broadcasts status to the box displays.</summary>
+    public double StatusBroadcastSeconds { get; set; } = 1.0;
+}
+
 public sealed class TransportConfig
 {
     public bool UdpEnabled { get; set; } = true;
     public int UdpPort { get; set; } = 47810;
     public int NodeCommandPort { get; set; } = 47811;
+    /// <summary>Status broadcast to the box displays.</summary>
+    public int StatusPort { get; set; } = 47812;
     public bool MqttEnabled { get; set; }
     public string MqttHost { get; set; } = "homeassistant.local";
     public int MqttPort { get; set; } = 1883;

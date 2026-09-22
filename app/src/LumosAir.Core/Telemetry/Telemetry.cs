@@ -94,4 +94,7 @@ public interface ITelemetrySource : IAsyncDisposable
     Task StartAsync(CancellationToken ct);
     /// <summary>Send a command (e.g. {"cmd":"zero"}) to a node.</summary>
     Task SendCommandAsync(string node, string json, CancellationToken ct);
+
+    /// <summary>Broadcast the system status that the box displays show.</summary>
+    Task BroadcastStatusAsync(string json, CancellationToken ct);
 }

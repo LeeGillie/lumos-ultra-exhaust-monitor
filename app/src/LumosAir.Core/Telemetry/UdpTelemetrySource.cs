@@ -13,15 +13,17 @@ public sealed class UdpTelemetrySource : ITelemetrySource
 {
     private readonly int _port;
     private readonly int _commandPort;
+    private readonly int _statusPort;
     private readonly ConcurrentDictionary<string, IPAddress> _nodeAddresses = new(StringComparer.OrdinalIgnoreCase);
     private UdpClient? _client;
     private CancellationTokenSource? _cts;
     private Task? _loop;
 
-    public UdpTelemetrySource(int port = 47810, int commandPort = 47811)
+    public UdpTelemetrySource(int port = 47810, int commandPort = 47811, int statusPort = 47812)
     {
         _port = port;
         _commandPort = commandPort;
+        _statusPort = statusPort;
     }
 
     public string Name => $"UDP :{_port}";
@@ -71,6 +73,13 @@ public sealed class UdpTelemetrySource : ITelemetrySource
             await _client.SendAsync(bytes, new IPEndPoint(addr, _commandPort), ct);
         else
             await _client.SendAsync(bytes, new IPEndPoint(IPAddress.Broadcast, _commandPort), ct);
+    }
+
+    public async Task BroadcastStatusAsync(string json, CancellationToken ct)
+    {
+        if (_client is null) return;
+        await _client.SendAsync(Encoding.UTF8.GetBytes(json),
+            new IPEndPoint(IPAddress.Broadcast, _statusPort), ct);
     }
 
     public async ValueTask DisposeAsync()
