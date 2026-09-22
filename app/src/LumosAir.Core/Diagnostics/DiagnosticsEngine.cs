@@ -64,6 +64,7 @@ public sealed class DiagnosticsEngine
     private readonly Dictionary<string, DateTimeOffset> _pending = new();
     private EnvReading? _env;
     private int? _reportedFanLevel;
+    private bool _reportedFanDriven;
 
     public SystemModel Model { get; private set; }
     public SystemConfig Config => Model.Config;
@@ -92,7 +93,7 @@ public sealed class DiagnosticsEngine
             var now = frame.ReceivedAt;
             _nodeSeen[frame.Node] = now;
             if (frame.Env is { } env) _env = env;
-            if (frame.FanLevel is { } lvl) _reportedFanLevel = lvl;
+            if (frame.FanLevel is { } lvl) { _reportedFanLevel = lvl; _reportedFanDriven = frame.FanDriven; }
             double tau = Math.Max(0.01, Config.Thresholds.SmoothingSeconds);
             foreach (var (name, r) in frame.Channels)
             {
@@ -113,7 +114,13 @@ public sealed class DiagnosticsEngine
         }
     }
 
-    public int CurrentFanLevel => _reportedFanLevel ?? ManualFanLevel;
+    /// <summary>
+    /// The fan level to model with. A node's reported level counts only when it is
+    /// actually driving the fan; with the output disabled it is echoing the last
+    /// command and cannot see the physical dial, so the level you set here wins.
+    /// </summary>
+    public int CurrentFanLevel =>
+        _reportedFanLevel is { } lvl && _reportedFanDriven ? lvl : ManualFanLevel;
 
     private AirState CurrentAir() => _env is { } e
         ? new AirState(e.TemperatureC, e.RelativeHumidity, e.PressurePa)

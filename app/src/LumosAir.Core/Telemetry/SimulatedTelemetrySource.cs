@@ -104,7 +104,8 @@ public sealed class SimulatedTelemetrySource : ITelemetrySource
             ReceivedAt = now,
             Channels = kv.Value,
             Env = new EnvReading(Air.TemperatureC, Air.RelativeHumidity, Air.PressurePa),
-            FanLevel = kv.Key == "fan" ? FanLevel : null
+            FanLevel = kv.Key == "fan" ? FanLevel : null,
+            FanDriven = kv.Key == "fan" && FollowFanCommands
         }).ToList();
     }
 

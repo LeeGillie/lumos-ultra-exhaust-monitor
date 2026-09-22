@@ -20,6 +20,13 @@ public sealed class TelemetryFrame
     /// <summary>Fan level reported by a fan node (optional, phase 2).</summary>
     public int? FanLevel { get; init; }
     public int? FanRpm { get; init; }
+    /// <summary>
+    /// True when the node is actually driving the fan. With FAN_OUTPUT_ENABLED off -
+    /// the default, until the CLOUDLINE UIS pinout is verified - the node only echoes
+    /// the last level it was told, and has no idea where the physical dial is set. So
+    /// its level is authoritative only when this is true.
+    /// </summary>
+    public bool FanDriven { get; init; }
 
     /// <summary>
     /// Wire format (UDP datagram or MQTT payload):
@@ -60,10 +67,12 @@ public sealed class TelemetryFrame
                 env = new EnvReading(et.GetDouble(), rh, ep.GetDouble());
             }
             int? level = null, rpm = null;
+            bool driven = false;
             if (root.TryGetProperty("fan", out var fan) && fan.ValueKind == JsonValueKind.Object)
             {
                 if (fan.TryGetProperty("level", out var l) && l.ValueKind == JsonValueKind.Number) level = l.GetInt32();
                 if (fan.TryGetProperty("rpm", out var r) && r.ValueKind == JsonValueKind.Number) rpm = r.GetInt32();
+                driven = fan.TryGetProperty("driven", out var dv) && dv.ValueKind == JsonValueKind.True;
             }
             frame = new TelemetryFrame
             {
@@ -74,7 +83,8 @@ public sealed class TelemetryFrame
                 Channels = channels,
                 Env = env,
                 FanLevel = level,
-                FanRpm = rpm
+                FanRpm = rpm,
+                FanDriven = driven
             };
             return frame.Node.Length > 0;
         }

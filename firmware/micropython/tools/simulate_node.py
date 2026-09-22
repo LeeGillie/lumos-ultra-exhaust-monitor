@@ -394,7 +394,11 @@ class LiveNode:
                  "up": self.seq * int(self.period * 1000), "rssi": -61,
                  "ch": self.chans, "env": {"t": 23.9, "rh": 41.0, "p": 94412}}
         if self.node_id == "fan":
-            frame["fan"] = {"level": self.level}      # an object, as the app parses it
+            # Same shape as fan.py's telemetry(). driven=False because the real node
+            # has FAN_OUTPUT_ENABLED off until the CLOUDLINE UIS pinout is verified:
+            # it echoes the last level it was told and cannot see the physical dial,
+            # so the app must not let this override the level you set by hand.
+            frame["fan"] = {"level": self.level, "mode": "advisory", "driven": False}
         self.tx.sendto(json.dumps(frame).encode(), ("255.255.255.255", self.telemetry_port))
 
         for m in self._drain(self.cmd):

@@ -401,6 +401,30 @@ await T("the node simulator's frames read as a healthy system", () =>
              $"Option {opt}: " + string.Join(", ", snap.Findings.Select(f => f.Code)));
     }
 });
+await T("a node that is not driving the fan cannot override the level you set", () =>
+{
+    // The node reports {"level":N,"driven":false} when FAN_OUTPUT_ENABLED is off:
+    // it is echoing the last command and has no idea where the physical dial is.
+    // Letting that win silently discarded the level set in the app.
+    string Fan(int level, bool driven) =>
+        "{\"node\":\"fan\",\"seq\":1,\"up\":1000,\"ch\":{},\"fan\":{\"level\":" + level +
+        ",\"mode\":\"advisory\",\"driven\":" + (driven ? "true" : "false") + "}}";
+
+    var now = DateTimeOffset.UtcNow;
+    var idle = new DiagnosticsEngine(DefaultSystems.Current()) { ManualFanLevel = 10 };
+    idle.Clock = () => now;
+    TelemetryFrame.TryParse(System.Text.Encoding.UTF8.GetBytes(Fan(7, false)), out var f1, now);
+    idle.Ingest(f1!);
+    True(idle.CurrentFanLevel == 10,
+         $"not driving: expected the manual 10, got {idle.CurrentFanLevel}");
+
+    var driving = new DiagnosticsEngine(DefaultSystems.Current()) { ManualFanLevel = 10 };
+    driving.Clock = () => now;
+    TelemetryFrame.TryParse(System.Text.Encoding.UTF8.GetBytes(Fan(7, true)), out var f2, now);
+    driving.Ingest(f2!);
+    True(driving.CurrentFanLevel == 7,
+         $"driving: the node is authoritative, expected 7, got {driving.CurrentFanLevel}");
+});
 await T("status payload survives the values the model legitimately produces", () =>
 {
     // CycloneCutSize returns +infinity on purpose when the inlet velocity is zero,
