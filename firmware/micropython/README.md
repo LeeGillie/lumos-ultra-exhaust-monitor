@@ -16,6 +16,7 @@ lib/lumosair/
   node.py               sampling loop and command handling
 tools/serve_update.py   serve this folder to the nodes for OTA
 tools/send_command.py   zero / set_level / update / watch telemetry from a PC
+tools/simulate_node.py  run a node on the PC and render its screen to a PNG
 tests/test_firmware.py  host tests (plain CPython, no hardware)
 ```
 
@@ -71,12 +72,51 @@ CLOUDLINE UIS pinout is community-reverse-engineered, so check it with a meter
 first. Until then the app's Auto mode still works as an advisory — it tells you
 (and the box screen) which level to set.
 
+## Running a node without a node
+
+`tools/simulate_node.py` runs the box on your PC and draws what the panel would
+show. It is not a mock of the UI: it imports the real `st7789` and `display_ui`
+and decodes the SPI command stream the driver emits (CASET / RASET / RAMWR) into
+a framebuffer, so the PNG is the panel pixel for pixel — layout bugs included.
+Standard library only.
+
+```
+python tools/simulate_node.py                  # every scenario -> out/
+python tools/simulate_node.py --scenario nopc
+python tools/simulate_node.py --live           # act as a real node on the LAN
+```
+
+![The box screen, healthy](../../docs/screenshots/node-screen-healthy.png)
+
+![The box screen, clogged run](../../docs/screenshots/node-screen-clog.png)
+
+Scenarios: `healthy`, `clog`, `binleak`, `pitot`, `slow`, `sensorfault`, `nopc`
+(the desktop app isn't running) and `fannode` (the one-channel box).
+
+`--live` makes it a stand-in for a real box: it publishes telemetry on UDP 47810,
+accepts commands on 47811, and listens for the app's status broadcast on 47812,
+rewriting `out/screen_live_laser.png` every frame. Start it, then run the desktop
+app with **Source = Udp** and **Connect** — the app sees a node that isn't there,
+and the screen reacts to what the app concludes. Open the PNG in VS Code and it
+refreshes as the file changes.
+
+The 8x8 font it uses stands in for MicroPython's built-in one. The cell is the
+same fixed 8x8, so anything that fits here fits on the panel; individual glyph
+shapes differ slightly.
+
+**This is how the seven-segment bug was found** — every digit with an asymmetric
+shape (3, 4, 6, 7, 9) rendered mirrored, because `_DIGITS` is written LSB-first
+and `seg7` was reading it MSB-first. Nothing caught it, because the old test only
+asserted that `seg7` wrote *some* pixels. There are now eight checks on which
+bars each digit lights.
+
 ## Host tests
 
 ```
 python tests/test_firmware.py
 ```
 
-31 checks covering the CRC and scaling maths, the multiplexer, channel averaging
+39 checks covering the CRC and scaling maths, the multiplexer, channel averaging
 and zero offsets, the fan level mapping, the telemetry payload the PC app parses,
-and the display driver's pixel pushing. Only the pin wiggling needs hardware.
+and the display driver — including which segments each digit lights. Only the pin
+wiggling needs hardware.

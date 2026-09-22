@@ -1,0 +1,219 @@
+{
+  // LumosAir run configurations.
+  //   Open the LumosAir folder itself in VS Code (not its parent) so these are found.
+  //   Needs the C# Dev Kit extension for the .NET configs.
+  //   The exe path follows the target framework — if you retarget, fix net9.0-windows below.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "App: today's system (Option C, no separator)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build app",
+      "program": "${workspaceFolder}/app/src/LumosAir.Desktop/bin/Debug/net9.0-windows/LumosAir.exe",
+      "args": ["--config", "config/system.optionC.json"],
+      "cwd": "${workspaceFolder}/app",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      "name": "App: with separator (Option A, rigid 4\" spool)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build app",
+      "program": "${workspaceFolder}/app/src/LumosAir.Desktop/bin/Debug/net9.0-windows/LumosAir.exe",
+      "args": ["--config", "config/system.optionA.json"],
+      "cwd": "${workspaceFolder}/app",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      "name": "App: straight to 6\" (Option B)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build app",
+      "program": "${workspaceFolder}/app/src/LumosAir.Desktop/bin/Debug/net9.0-windows/LumosAir.exe",
+      "args": ["--config", "config/system.optionB.json"],
+      "cwd": "${workspaceFolder}/app",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      "name": "App: your saved config (%APPDATA%\\LumosAir)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build app",
+      "program": "${workspaceFolder}/app/src/LumosAir.Desktop/bin/Debug/net9.0-windows/LumosAir.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/app",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      "name": "App: pick a config file…",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build app",
+      "program": "${workspaceFolder}/app/src/LumosAir.Desktop/bin/Debug/net9.0-windows/LumosAir.exe",
+      "args": ["--config", "${input:configFile}"],
+      "cwd": "${workspaceFolder}/app",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      // Simulator → baseline → inject the fault → screenshot → exit. Writes app/selftest.png.
+      "name": "App: self-test screenshot (pick a scenario)…",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build app",
+      "program": "${workspaceFolder}/app/src/LumosAir.Desktop/bin/Debug/net9.0-windows/LumosAir.exe",
+      "args": ["--selftest", "selftest.png", "--scenario", "${input:scenario}"],
+      "cwd": "${workspaceFolder}/app",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+
+    {
+      "name": "CLI: model (pick an option)…",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build app",
+      "program": "${workspaceFolder}/app/src/LumosAir.Cli/bin/Debug/net9.0/lumosair.dll",
+      "args": ["model", "--option", "${input:option}"],
+      "cwd": "${workspaceFolder}/app",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "CLI: can the fan reach N CFM?…",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build app",
+      "program": "${workspaceFolder}/app/src/LumosAir.Cli/bin/Debug/net9.0/lumosair.dll",
+      "args": ["model", "--need-cfm", "${input:needCfm}"],
+      "cwd": "${workspaceFolder}/app",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      // Runs the simulator headless: 5 s to settle, baseline, inject, 10 s, print findings.
+      "name": "CLI: simulate a fault (pick one)…",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build app",
+      "program": "${workspaceFolder}/app/src/LumosAir.Cli/bin/Debug/net9.0/lumosair.dll",
+      "args": ["simulate", "--option", "${input:option}", "--fault", "${input:fault}"],
+      "cwd": "${workspaceFolder}/app",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "CLI: listen to real nodes (UDP 47810)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build app",
+      "program": "${workspaceFolder}/app/src/LumosAir.Cli/bin/Debug/net9.0/lumosair.dll",
+      "args": ["listen", "--option", "C"],
+      "cwd": "${workspaceFolder}/app",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+
+    {
+      "name": "Tests: app (41 checks)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build app",
+      "program": "${workspaceFolder}/app/tests/LumosAir.Tests/bin/Debug/net9.0/LumosAir.Tests.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/app",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Tests: firmware (31 checks, plain CPython)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/firmware/micropython/tests/test_firmware.py",
+      "cwd": "${workspaceFolder}/firmware/micropython",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Node sim: render the box screen (debug)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/firmware/micropython/tools/simulate_node.py",
+      "args": ["--scenario", "${input:screen}"],
+      "cwd": "${workspaceFolder}/firmware/micropython",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "CAD: enclosure fitment (debug)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/cad/enclosure.py",
+      "args": ["--populate", "${input:node}"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    }
+  ],
+
+  "inputs": [
+    {
+      "id": "scenario",
+      "type": "pickString",
+      "description": "Which fault should the screenshot show?",
+      "options": ["healthy", "clog", "pitot", "slow", "outlet"],
+      "default": "clog"
+    },
+    {
+      "id": "fault",
+      "type": "pickString",
+      "description": "Fault to inject",
+      "options": ["none", "clog", "leak", "binleak", "pitot", "outlet", "cyclone", "lid", "slow"],
+      "default": "clog"
+    },
+    {
+      "id": "option",
+      "type": "pickString",
+      "description": "Which system layout?",
+      "options": [
+        { "label": "A — separator + rigid 4\" measuring spool", "value": "A" },
+        { "label": "B — separator straight to 6\"", "value": "B" },
+        { "label": "C — today, no separator", "value": "C" }
+      ],
+      "default": "C"
+    },
+    {
+      "id": "configFile",
+      "type": "pickString",
+      "description": "Config file (relative to app/)",
+      "options": [
+        "config/system.optionA.json",
+        "config/system.optionB.json",
+        "config/system.optionC.json"
+      ],
+      "default": "config/system.optionC.json"
+    },
+    {
+      "id": "needCfm",
+      "type": "promptString",
+      "description": "CFM the cyclone needs (the 3\" Dust Deputy wants 200)",
+      "default": "200"
+    },
+    {
+      "id": "screen",
+      "type": "pickString",
+      "description": "Which box screen?",
+      "options": ["healthy", "clog", "binleak", "pitot", "slow", "sensorfault", "nopc", "fannode"],
+      "default": "healthy"
+    },
+    {
+      "id": "node",
+      "type": "pickString",
+      "description": "Which box?",
+      "options": ["laser", "fan"],
+      "default": "laser"
+    }
+  ]
+}

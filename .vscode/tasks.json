@@ -1,0 +1,186 @@
+{
+  // Ctrl+Shift+B runs "build app". Everything else: Terminal → Run Task…
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build app",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["build", "${workspaceFolder}/app/LumosAir.sln", "-v", "q", "--nologo"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "test: app",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["run", "--project", "${workspaceFolder}/app/tests/LumosAir.Tests"],
+      "options": { "cwd": "${workspaceFolder}/app" },
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "test: firmware",
+      "type": "process",
+      "command": "python",
+      "args": ["tests/test_firmware.py"],
+      "options": { "cwd": "${workspaceFolder}/firmware/micropython" },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "test: everything",
+      "dependsOrder": "sequence",
+      "dependsOn": ["test: app", "test: firmware"],
+      "problemMatcher": []
+    },
+
+    {
+      // Which enclosure fits, and what the elbows buy you.
+      "label": "cad: compare enclosures",
+      "type": "process",
+      "command": "python",
+      "args": ["cad/enclosure.py", "--compare"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "cad: fitment + STEP/STL (laser box)",
+      "type": "process",
+      "command": "python",
+      "args": ["cad/enclosure.py", "--populate", "laser"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "cad: fitment + STEP/STL (fan box)",
+      "type": "process",
+      "command": "python",
+      "args": ["cad/enclosure.py", "--populate", "fan"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "cad: panel artwork + PCB outlines",
+      "type": "process",
+      "command": "python",
+      "args": ["cad/artwork.py"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "cad: renders",
+      "type": "process",
+      "command": "python",
+      "args": ["render.py"],
+      "options": { "cwd": "${workspaceFolder}/cad" },
+      "problemMatcher": []
+    },
+    {
+      "label": "cad: regenerate everything",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "cad: fitment + STEP/STL (laser box)",
+        "cad: fitment + STEP/STL (fan box)",
+        "cad: panel artwork + PCB outlines",
+        "cad: renders"
+      ],
+      "problemMatcher": []
+    },
+
+    {
+      // Renders every box-screen scenario to firmware/micropython/out/*.png
+      "label": "node sim: render every screen",
+      "type": "process",
+      "command": "python",
+      "args": ["tools/simulate_node.py"],
+      "options": { "cwd": "${workspaceFolder}/firmware/micropython" },
+      "problemMatcher": []
+    },
+    {
+      "label": "node sim: render one screen…",
+      "type": "process",
+      "command": "python",
+      "args": ["tools/simulate_node.py", "--scenario", "${input:screen}"],
+      "options": { "cwd": "${workspaceFolder}/firmware/micropython" },
+      "problemMatcher": []
+    },
+    {
+      // A stand-in box on the LAN. Run the app with Source = Udp against it.
+      "label": "node sim: live node on the LAN…",
+      "type": "process",
+      "command": "python",
+      "args": ["tools/simulate_node.py", "--live", "--node", "${input:fwNode}"],
+      "options": { "cwd": "${workspaceFolder}/firmware/micropython" },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      // Leave running while you push firmware to a box over Wi-Fi.
+      "label": "firmware: serve OTA updates",
+      "type": "process",
+      "command": "python",
+      "args": ["tools/serve_update.py"],
+      "options": { "cwd": "${workspaceFolder}/firmware/micropython" },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "firmware: send a command to a node…",
+      "type": "process",
+      "command": "python",
+      "args": ["tools/send_command.py", "${input:fwNode}", "${input:fwCommand}"],
+      "options": { "cwd": "${workspaceFolder}/firmware/micropython" },
+      "problemMatcher": []
+    },
+    {
+      "label": "firmware: set fan level…",
+      "type": "process",
+      "command": "python",
+      "args": ["tools/send_command.py", "fan", "set_level", "${input:fanLevel}"],
+      "options": { "cwd": "${workspaceFolder}/firmware/micropython" },
+      "problemMatcher": []
+    },
+    {
+      // Prints every telemetry frame on the LAN. Ctrl+C to stop.
+      "label": "firmware: watch telemetry",
+      "type": "process",
+      "command": "python",
+      "args": ["tools/send_command.py", "--listen"],
+      "options": { "cwd": "${workspaceFolder}/firmware/micropython" },
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ],
+
+  "inputs": [
+    {
+      "id": "fwNode",
+      "type": "pickString",
+      "description": "Which box?",
+      "options": ["laser", "fan"],
+      "default": "laser"
+    },
+    {
+      "id": "fwCommand",
+      "type": "pickString",
+      "description": "Command",
+      "options": ["info", "zero", "clear_zero", "update", "reboot"],
+      "default": "info"
+    },
+    {
+      "id": "screen",
+      "type": "pickString",
+      "description": "Which box screen?",
+      "options": ["healthy", "clog", "binleak", "pitot", "slow", "sensorfault", "nopc", "fannode"],
+      "default": "healthy"
+    },
+    {
+      "id": "fanLevel",
+      "type": "pickString",
+      "description": "CLOUDLINE S6 level",
+      "options": ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+      "default": "7"
+    }
+  ]
+}

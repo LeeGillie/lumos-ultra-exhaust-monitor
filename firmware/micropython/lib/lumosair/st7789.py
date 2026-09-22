@@ -153,7 +153,8 @@ class ST7789:
                 continue
             half = (digit_h - thick) / 2.0
             for i, (sx, sy, horiz) in enumerate(_SEGMENTS):
-                if not (mask >> (6 - i)) & 1:
+                # _DIGITS is written LSB-first: bit i is _SEGMENTS[i].
+                if not (mask >> i) & 1:
                     continue
                 px = int(x + sx * (digit_w - thick))
                 py = int(y + sy * half)

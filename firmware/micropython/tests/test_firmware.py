@@ -220,6 +220,49 @@ check("seg7 writes pixels", spi.bytes_written > before)
 check("colour helper packs RGB565 byte-swapped", st7789.rgb(255, 0, 0) == 0x00F8,
       hex(st7789.rgb(255, 0, 0)))
 
+
+def lit_segments(ch, digit_w=34, digit_h=58, thick=7):
+    """Which of the seven bars seg7 actually paints for one character.
+
+    Records fill_rect calls in the digit's colour and maps each back to its slot
+    in _SEGMENTS. Checking the count alone would not have caught reading the
+    bitmap backwards, because a mirrored digit lights the same NUMBER of bars.
+    """
+    t = st7789.ST7789(FakeSPI(), FakePin(1), FakePin(), rotation=1)
+    calls = []
+    t.fill_rect = lambda x, y, w, h, c: calls.append((x, y, w, h, c))
+    t.seg7(ch, 0, 0, digit_w=digit_w, digit_h=digit_h, thick=thick,
+           color=st7789.WHITE, bg=st7789.DARK)
+    half = (digit_h - thick) / 2.0
+    want = {}
+    for i, (sx, sy, horiz) in enumerate(st7789._SEGMENTS):
+        want[(int(sx * (digit_w - thick)), int(sy * half), horiz)] = i
+    out = set()
+    for x, y, w, h, c in calls:
+        if c != st7789.WHITE:
+            continue
+        out.add(want.get((x, y, w == digit_w)))
+    return out - {None}
+
+
+# segment indices: 0 top, 1 top-left, 2 top-right, 3 middle,
+#                  4 bottom-left, 5 bottom-right, 6 bottom
+check("seg7 '1' lights only the two right-hand bars", lit_segments("1") == {2, 5},
+      lit_segments("1"))
+check("seg7 '7' lights top + both right bars", lit_segments("7") == {0, 2, 5},
+      lit_segments("7"))
+check("seg7 '4' has no top bar and no bottom bar", lit_segments("4") == {1, 2, 3, 5},
+      lit_segments("4"))
+check("seg7 '6' has a bottom-left bar but no top-right", lit_segments("6") == {0, 1, 3, 4, 5, 6},
+      lit_segments("6"))
+check("seg7 '9' has a top-right bar but no bottom-left", lit_segments("9") == {0, 1, 2, 3, 5, 6},
+      lit_segments("9"))
+check("seg7 '3' is not a mirrored 'E'", lit_segments("3") == {0, 2, 3, 5, 6},
+      lit_segments("3"))
+check("seg7 '8' lights all seven", lit_segments("8") == {0, 1, 2, 3, 4, 5, 6},
+      lit_segments("8"))
+check("seg7 '-' is the middle bar alone", lit_segments("-") == {3}, lit_segments("-"))
+
 print()
 print(f"{passed} passed, {failed} failed")
 sys.exit(0 if failed == 0 else 1)
