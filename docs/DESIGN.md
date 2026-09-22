@@ -170,7 +170,10 @@ If you want to keep the 3" steel Dust Deputy, the fan has to change: roughly **5
 
 ## 5. Hardware (BOM)
 
-See `BOM.csv` for the full list. Prices are approximate as of September 2026; check before ordering.
+See [`BOM.xlsx`](BOM.xlsx) for the full list — it carries the sourcing state, part
+numbers, dimensions, datasheet and 3D-model links, and a `Deleted` column recording
+what earlier design revisions retired. Prices are approximate as of September 2026;
+check before ordering. Items sold in packs show the per-item price as a formula.
 
 | Item | Qty | Approx. |
 |---|---|---|

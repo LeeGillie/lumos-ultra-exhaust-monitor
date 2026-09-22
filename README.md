@@ -65,7 +65,9 @@ System layout and sensor taps:
 
 ## Cost per sensor unit
 
-Approximate prices as of September 2026; check before ordering. The full list is in [`docs/BOM.csv`](docs/BOM.csv).
+Approximate prices as of September 2026; check before ordering. The full list, with
+sourcing, part numbers, dimensions and datasheet links, is in
+[`docs/BOM.xlsx`](docs/BOM.xlsx).
 
 ### Per measurement channel
 
@@ -144,7 +146,7 @@ yourself — until then Auto still works as an advisory, on screen and on the bo
 ```
 cad/         parametric enclosure model (CadQuery): fitment, hose routing,
              panel artwork, KiCad board outlines, STEP/STL/renders
-docs/        DESIGN.md (start here), BOM.csv, system diagram, screenshots, model output
+docs/        DESIGN.md (start here), BOM.xlsx, system diagram, screenshots, model output
 firmware/micropython/   ESP32 node firmware: sensors, display, Wi-Fi, OTA
 app/
   src/LumosAir.Core      physics model, diagnostics, UDP / MQTT / simulator (no NuGet dependencies)
