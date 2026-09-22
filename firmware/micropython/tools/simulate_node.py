@@ -53,6 +53,40 @@ _FONT8 = base64.b64decode(
     "HgAICAQGBAgIGAAICAgICAgIBAQIGAgEBAYAAAAGGAAAAA=="
 )
 
+# What each channel reads at each fan level, straight out of the desktop app's own
+# physics model (SystemModel.PredictReading) for Option A and Option C. Made-up
+# numbers look plausible but are not a solved operating point, so the taps disagree
+# with each other and the app quite correctly flags the pitot as suspect.
+_PROFILES = json.loads(
+    "{\"A\":{\"0\":{\"fan/fan_in\":0,\"laser/bin\":0,\"laser/cyc_dp\":0,\"laser/encl\":0,\"laser/pitot\":"
+    "0,\"laser/run_in\":0},\"1\":{\"fan/fan_in\":4.19,\"laser/bin\":2.5,\"laser/cyc_dp\":2.14,\"laser/"
+    "encl\":0.18,\"laser/pitot\":0.44,\"laser/run_in\":3.59},\"10\":{\"fan/fan_in\":416.28,\"laser/bi"
+    "n\":267.09,\"laser/cyc_dp\":228.21,\"laser/encl\":18.78,\"laser/pitot\":46.96,\"laser/run_in\":"
+    "373.72},\"2\":{\"fan/fan_in\":16.71,\"laser/bin\":10.29,\"laser/cyc_dp\":8.79,\"laser/encl\":0.7"
+    "2,\"laser/pitot\":1.81,\"laser/run_in\":14.59},\"3\":{\"fan/fan_in\":37.55,\"laser/bin\":23.44,\""
+    "laser/cyc_dp\":20.03,\"laser/encl\":1.65,\"laser/pitot\":4.12,\"laser/run_in\":33.08},\"4\":{\"f"
+    "an/fan_in\":66.71,\"laser/bin\":41.98,\"laser/cyc_dp\":35.87,\"laser/encl\":2.95,\"laser/pitot"
+    "\":7.38,\"laser/run_in\":59.1},\"5\":{\"fan/fan_in\":104.19,\"laser/bin\":65.93,\"laser/cyc_dp\":"
+    "56.33,\"laser/encl\":4.64,\"laser/pitot\":11.59,\"laser/run_in\":92.65},\"6\":{\"fan/fan_in\":14"
+    "9.98,\"laser/bin\":95.29,\"laser/cyc_dp\":81.42,\"laser/encl\":6.7,\"laser/pitot\":16.75,\"lase"
+    "r/run_in\":133.74},\"7\":{\"fan/fan_in\":204.09,\"laser/bin\":130.09,\"laser/cyc_dp\":111.15,\"l"
+    "aser/encl\":9.15,\"laser/pitot\":22.87,\"laser/run_in\":182.39},\"8\":{\"fan/fan_in\":266.5,\"la"
+    "ser/bin\":170.32,\"laser/cyc_dp\":145.52,\"laser/encl\":11.98,\"laser/pitot\":29.94,\"laser/ru"
+    "n_in\":238.6},\"9\":{\"fan/fan_in\":337.24,\"laser/bin\":215.98,\"laser/cyc_dp\":184.54,\"laser/"
+    "encl\":15.19,\"laser/pitot\":37.97,\"laser/run_in\":302.37}},\"C\":{\"0\":{\"fan/fan_in\":0,\"lase"
+    "r/encl\":0,\"laser/pitot\":0,\"laser/run_in\":0},\"1\":{\"fan/fan_in\":3.81,\"laser/encl\":0.34,\""
+    "laser/pitot\":0.85,\"laser/run_in\":2.74},\"10\":{\"fan/fan_in\":374.16,\"laser/encl\":37.81,\"l"
+    "aser/pitot\":94.53,\"laser/run_in\":291.72},\"2\":{\"fan/fan_in\":15.14,\"laser/encl\":1.42,\"la"
+    "ser/pitot\":3.54,\"laser/run_in\":11.25},\"3\":{\"fan/fan_in\":33.96,\"laser/encl\":3.26,\"laser"
+    "/pitot\":8.15,\"laser/run_in\":25.62},\"4\":{\"fan/fan_in\":60.24,\"laser/encl\":5.87,\"laser/pi"
+    "tot\":14.67,\"laser/run_in\":45.88},\"5\":{\"fan/fan_in\":93.99,\"laser/encl\":9.25,\"laser/pito"
+    "t\":23.14,\"laser/run_in\":72.06},\"6\":{\"fan/fan_in\":135.19,\"laser/encl\":13.41,\"laser/pito"
+    "t\":33.54,\"laser/run_in\":104.16},\"7\":{\"fan/fan_in\":183.86,\"laser/encl\":18.35,\"laser/pit"
+    "ot\":45.88,\"laser/run_in\":142.21},\"8\":{\"fan/fan_in\":239.88,\"laser/encl\":24.06,\"laser/pi"
+    "tot\":60.16,\"laser/run_in\":186.13},\"9\":{\"fan/fan_in\":303.31,\"laser/encl\":30.55,\"laser/p"
+    "itot\":76.37,\"laser/run_in\":235.96}}}"
+)
+
 # ======================================================================================
 # a minimal `framebuf` so the real driver's text() path works off-target
 # ======================================================================================
@@ -237,42 +271,42 @@ SCENARIOS = {
     "healthy": dict(
         sev="ok", cfm=212, src="pitot", level=7, mode="auto", rec=7,
         head="Everything within baseline",
-        ch=[("cyc_dp", 168.4, True), ("bin", -42.1, True), ("pitot", 61.8, True),
-            ("run_in", -96.3, True), ("encl", -18.9, True)]),
+        ch=[("cyc_dp", 168.4, True), ("bin", 42.1, True), ("pitot", 61.8, True),
+            ("run_in", 96.3, True), ("encl", 18.9, True)]),
     "clog": dict(
         sev="critical", cfm=118, src="taps (pitot suspect)", level=10, mode="auto", rec=10,
         head="Long run restricted - check for a kink",
-        ch=[("cyc_dp", 61.2, True), ("bin", -18.7, True), ("pitot", 19.4, True),
-            ("run_in", -188.5, True), ("encl", -7.1, True)]),
+        ch=[("cyc_dp", 61.2, True), ("bin", 18.7, True), ("pitot", 19.4, True),
+            ("run_in", 188.5, True), ("encl", 7.1, True)]),
     "binleak": dict(
         sev="warning", cfm=198, src="pitot", level=7, mode="auto", rec=8,
         head="Dust bin appears to be leaking",
-        ch=[("cyc_dp", 151.0, True), ("bin", -6.2, True), ("pitot", 57.1, True),
-            ("run_in", -92.8, True), ("encl", -17.4, True)]),
+        ch=[("cyc_dp", 151.0, True), ("bin", 6.2, True), ("pitot", 57.1, True),
+            ("run_in", 92.8, True), ("encl", 17.4, True)]),
     "pitot": dict(
         sev="warning", cfm=205, src="taps (pitot suspect)", level=7, mode="auto", rec=7,
         head="Pitot disagrees - tip may be blocked",
-        ch=[("cyc_dp", 164.9, True), ("bin", -41.0, True), ("pitot", 8.2, True),
-            ("run_in", -95.0, True), ("encl", -18.2, True)]),
+        ch=[("cyc_dp", 164.9, True), ("bin", 41.0, True), ("pitot", 8.2, True),
+            ("run_in", 95.0, True), ("encl", 18.2, True)]),
     "slow": dict(
         sev="advice", cfm=96, src="pitot", level=3, mode="manual", rec=8,
         head="Raise the fan to 8 for brass",
-        ch=[("cyc_dp", 39.8, True), ("bin", -11.9, True), ("pitot", 13.0, True),
-            ("run_in", -38.4, True), ("encl", -6.6, True)]),
+        ch=[("cyc_dp", 39.8, True), ("bin", 11.9, True), ("pitot", 13.0, True),
+            ("run_in", 38.4, True), ("encl", 6.6, True)]),
     "sensorfault": dict(
         sev="warning", cfm=203, src="taps", level=7, mode="auto", rec=7,
         head="encl channel not responding",
-        ch=[("cyc_dp", 166.1, True), ("bin", -41.6, True), ("pitot", 60.2, True),
-            ("run_in", -95.5, True), ("encl", 0.0, False)]),
+        ch=[("cyc_dp", 166.1, True), ("bin", 41.6, True), ("pitot", 60.2, True),
+            ("run_in", 95.5, True), ("encl", 0.0, False)]),
     "nopc": dict(
         sev="stale", cfm=None, src="no PC link", level=None, mode="", rec=None,
         head="Desktop app not running",
-        ch=[("cyc_dp", 167.2, True), ("bin", -41.8, True), ("pitot", 60.9, True),
-            ("run_in", -95.9, True), ("encl", -18.5, True)]),
+        ch=[("cyc_dp", 167.2, True), ("bin", 41.8, True), ("pitot", 60.9, True),
+            ("run_in", 95.9, True), ("encl", 18.5, True)]),
     "fannode": dict(
         sev="ok", cfm=212, src="pitot", level=7, mode="auto", rec=7,
         head="Everything within baseline",
-        ch=[("fan_in", -214.6, True)], node="fan"),
+        ch=[("fan_in", 214.6, True)], node="fan"),
 }
 
 
@@ -310,13 +344,15 @@ def run_scenarios(names, out_dir, scale):
 class LiveNode:
     """A stand-in box: emits telemetry, takes commands, shows what the PC concludes."""
 
-    CHANNELS = {"laser": ["cyc_dp", "bin", "pitot", "run_in", "encl"], "fan": ["fan_in"]}
-    BASE = {"cyc_dp": 168.0, "bin": -42.0, "pitot": 62.0,
-            "run_in": -96.0, "encl": -19.0, "fan_in": -214.0}
+    def channels(self):
+        """Channel names this node owns, taken from the profile."""
+        pre = self.node_id + "/"
+        return [k[len(pre):] for k in _PROFILES[self.profile]["10"] if k.startswith(pre)]
 
     def __init__(self, node_id, telemetry_port=47810, cmd_port=47811, status_port=47812,
-                 period=1.0, ip="192.168.1.42", log=print):
+                 period=1.0, ip="192.168.1.42", log=print, profile="A"):
         self.node_id, self.period, self.ip, self.log = node_id, period, ip, log
+        self.profile = profile
         self.telemetry_port = telemetry_port
         self.panel = VirtualPanel()
         self.tft = st7789.ST7789(self.panel, self.panel.cs, self.panel.dc, rotation=1)
@@ -349,15 +385,16 @@ class LiveNode:
         """One frame: publish, drain both inbound sockets, redraw."""
         self.seq += 1
         wobble = math.sin(self.seq / 9.0)
-        names = self.CHANNELS[self.node_id]
-        self.chans = {n: {"pa": round(self.BASE[n] * (0.55 + 0.045 * self.level)
-                                      * (1 + 0.012 * wobble), 2), "t": 24.0, "ok": True}
+        names = self.channels()
+        table = _PROFILES[self.profile][str(self.level)]
+        self.chans = {n: {"pa": round(table["%s/%s" % (self.node_id, n)] * (1 + 0.012 * wobble), 2),
+                          "t": 24.0, "ok": True}
                       for n in names}
         frame = {"node": self.node_id, "seq": self.seq,
                  "up": self.seq * int(self.period * 1000), "rssi": -61,
                  "ch": self.chans, "env": {"t": 23.9, "rh": 41.0, "p": 94412}}
         if self.node_id == "fan":
-            frame["fan"] = self.level
+            frame["fan"] = {"level": self.level}      # an object, as the app parses it
         self.tx.sendto(json.dumps(frame).encode(), ("255.255.255.255", self.telemetry_port))
 
         for m in self._drain(self.cmd):
@@ -409,10 +446,11 @@ class LiveNode:
                 pass
 
 
-def run_live(node_id, out_dir, scale, period, telemetry_port, cmd_port, status_port):
+def run_live(node_id, out_dir, scale, period, telemetry_port, cmd_port, status_port,
+             profile="A"):
     out_dir.mkdir(parents=True, exist_ok=True)
     png = out_dir / ("screen_live_%s.png" % node_id)
-    node = LiveNode(node_id, telemetry_port, cmd_port, status_port, period)
+    node = LiveNode(node_id, telemetry_port, cmd_port, status_port, period, profile=profile)
     print("simulated %s node: telemetry -> UDP %d, commands <- %d, status <- %d"
           % (node_id, telemetry_port, cmd_port, status_port))
     print("screen written to %s after every frame. Ctrl+C to stop." % png)
@@ -430,7 +468,8 @@ def run_live(node_id, out_dir, scale, period, telemetry_port, cmd_port, status_p
 # ======================================================================================
 # a window, so you can actually watch the thing
 # ======================================================================================
-def run_window(node_id, live, scenario, scale, period, telemetry_port, cmd_port, status_port):
+def run_window(node_id, live, scenario, scale, period, telemetry_port, cmd_port,
+               status_port, profile="A"):
     """Show the panel in a real window (tkinter, stdlib).
 
     Live: steps the node on a timer. Otherwise: shows a scenario, and Left/Right
@@ -456,7 +495,7 @@ def run_window(node_id, live, scenario, scale, period, telemetry_port, cmd_port,
 
     if live:
         node = LiveNode(node_id, telemetry_port, cmd_port, status_port, period,
-                        log=lambda m: caption.configure(text=m.strip()))
+                        log=lambda m: caption.configure(text=m.strip()), profile=profile)
         root.title("LumosAir - simulated %s node (live)" % node_id)
         print("simulated %s node: telemetry -> UDP %d, commands <- %d, status <- %d"
               % (node_id, telemetry_port, cmd_port, status_port))
@@ -502,6 +541,8 @@ def main() -> int:
     ap.add_argument("--live", action="store_true", help="act as a real node on the LAN")
     ap.add_argument("--window", action="store_true",
                     help="show the panel in a window instead of writing PNGs")
+    ap.add_argument("--config", choices=["A", "C"], default="A",
+                    help="which system layout to emit readings for; match the app")
     ap.add_argument("--scale", type=int, default=2, help="PNG pixel scale")
     ap.add_argument("--period", type=float, default=1.0, help="live: seconds per frame")
     ap.add_argument("--udp", type=int, default=47810)
@@ -512,10 +553,10 @@ def main() -> int:
     out = Path(a.out)
     if a.window:
         run_window(a.node, a.live, a.scenario if a.scenario != "all" else "healthy",
-                   a.scale, a.period, a.udp, a.cmd_port, a.status_port)
+                   a.scale, a.period, a.udp, a.cmd_port, a.status_port, a.config)
         return 0
     if a.live:
-        run_live(a.node, out, a.scale, a.period, a.udp, a.cmd_port, a.status_port)
+        run_live(a.node, out, a.scale, a.period, a.udp, a.cmd_port, a.status_port, a.config)
         return 0
     run_scenarios(sorted(SCENARIOS) if a.scenario == "all" else [a.scenario], out, a.scale)
     return 0

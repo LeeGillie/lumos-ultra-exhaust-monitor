@@ -127,6 +127,23 @@
       "problemMatcher": []
     },
     {
+      "label": "node sim: live FAN node (window)",
+      "type": "process",
+      "command": "python",
+      "args": ["-u", "tools/simulate_node.py", "--live", "--window", "--node", "fan"],
+      "options": { "cwd": "${workspaceFolder}/firmware/micropython" },
+      "isBackground": true,
+      "presentation": { "group": "nodesim", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      // Both boxes, both on screen - the pair the app's configs expect.
+      "label": "node sim: live BOTH nodes (windows)",
+      "dependsOrder": "parallel",
+      "dependsOn": ["node sim: live LASER node (window)", "node sim: live FAN node (window)"],
+      "problemMatcher": []
+    },
+    {
       // Stand-in boxes on the LAN. Run the app with Source = Udp against them.
       // Separate labels per node on purpose: VS Code treats one label as one task,
       // so a single parameterised task could not run both at once.

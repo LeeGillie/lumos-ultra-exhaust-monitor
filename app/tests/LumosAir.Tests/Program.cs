@@ -367,6 +367,40 @@ await T("a tap that cannot be inverted does not poison the flow estimate", () =>
     string json = StatusPayload.Build(snap, FanMode.Manual, 7);
     True(!json.Contains("NaN") && !json.Contains("Infinity"), json);
 });
+await T("the node simulator's frames read as a healthy system", () =>
+{
+    // These are the exact datagrams tools/simulate_node.py puts on the wire at fan
+    // level 10, for Option A and Option C. They are generated from the app's own
+    // PredictReading table, so they describe a real operating point; earlier the
+    // simulator invented plausible-looking constants with the suction channels
+    // negative, and the app - correctly - concluded every tap implied zero flow and
+    // announced that the exhaust fan was off.
+    var cases = new (string Opt, string Laser, string Fan)[]
+    {
+        ("A", "{\"node\": \"laser\", \"seq\": 5, \"up\": 5000, \"rssi\": -61, \"ch\": {\"bin\": {\"pa\": 268.78, \"t\": 24.0, \"ok\": true}, \"cyc_dp\": {\"pa\": 229.65, \"t\": 24.0, \"ok\": true}, \"encl\": {\"pa\": 18.9, \"t\": 24.0, \"ok\": true}, \"pitot\": {\"pa\": 47.26, \"t\": 24.0, \"ok\": true}, \"run_in\": {\"pa\": 376.09, \"t\": 24.0, \"ok\": true}}, \"env\": {\"t\": 23.9, \"rh\": 41.0, \"p\": 94412}}",
+              "{\"node\": \"fan\", \"seq\": 5, \"up\": 5000, \"rssi\": -61, \"ch\": {\"fan_in\": {\"pa\": 418.91, \"t\": 24.0, \"ok\": true}}, \"env\": {\"t\": 23.9, \"rh\": 41.0, \"p\": 94412}, \"fan\": {\"level\": 10}}"),
+        ("C", "{\"node\": \"laser\", \"seq\": 5, \"up\": 5000, \"rssi\": -61, \"ch\": {\"encl\": {\"pa\": 38.05, \"t\": 24.0, \"ok\": true}, \"pitot\": {\"pa\": 95.13, \"t\": 24.0, \"ok\": true}, \"run_in\": {\"pa\": 293.57, \"t\": 24.0, \"ok\": true}}, \"env\": {\"t\": 23.9, \"rh\": 41.0, \"p\": 94412}}",
+              "{\"node\": \"fan\", \"seq\": 5, \"up\": 5000, \"rssi\": -61, \"ch\": {\"fan_in\": {\"pa\": 376.53, \"t\": 24.0, \"ok\": true}}, \"env\": {\"t\": 23.9, \"rh\": 41.0, \"p\": 94412}, \"fan\": {\"level\": 10}}"),
+    };
+    foreach (var (opt, laser, fan) in cases)
+    {
+        var cfg = opt == "A" ? DefaultSystems.OptionA() : DefaultSystems.Current();
+        var eng = new DiagnosticsEngine(cfg) { ManualFanLevel = 10 };
+        var now = DateTimeOffset.UtcNow;
+        eng.Clock = () => now;
+        TelemetryFrame.TryParse(System.Text.Encoding.UTF8.GetBytes(laser), out var lf, now);
+        TelemetryFrame.TryParse(System.Text.Encoding.UTF8.GetBytes(fan), out var ff, now);
+        eng.Ingest(lf!); eng.Ingest(ff!);
+        var snap = eng.Evaluate();
+        True(double.IsFinite(snap.FlowCfm) && snap.FlowCfm > 100,
+             $"Option {opt}: expected a real flow, got {snap.FlowCfm:0.0} from {snap.FlowSource}");
+        True(snap.FanLevel == 10, $"Option {opt}: fan level reported as {snap.FanLevel}");
+        True(!snap.Findings.Any(f => f.Code == "fan-off"),
+             $"Option {opt}: reported the fan off at level 10");
+        True(!snap.Findings.Any(f => f.Severity == Severity.Critical),
+             $"Option {opt}: " + string.Join(", ", snap.Findings.Select(f => f.Code)));
+    }
+});
 await T("status payload survives the values the model legitimately produces", () =>
 {
     // CycloneCutSize returns +infinity on purpose when the inlet velocity is zero,
