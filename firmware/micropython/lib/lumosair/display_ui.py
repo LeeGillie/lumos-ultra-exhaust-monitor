@@ -83,7 +83,10 @@ class Screen:
 
     def fan(self, level, mode, recommended):
         t = self.tft
-        s = "-" if level is None else "%d" % level
+        # Fixed width, right-aligned. seg7 only clears as wide as the string it is
+        # given, so dropping from "10" to "7" left the old second digit standing and
+        # the screen read 70. flow() is safe for the same reason: it uses "%3d".
+        s = " -" if level is None else "%2d" % level
         if self._changed("fan", s):
             t.seg7(s, 212, 48, digit_w=30, digit_h=52, thick=7, color=C.BLUE, bg=C.DARK)
         line = "%s%s" % ((mode or "").upper(),

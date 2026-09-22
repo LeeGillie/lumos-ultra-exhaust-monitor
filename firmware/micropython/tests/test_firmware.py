@@ -263,6 +263,48 @@ check("seg7 '8' lights all seven", lit_segments("8") == {0, 1, 2, 3, 4, 5, 6},
       lit_segments("8"))
 check("seg7 '-' is the middle bar alone", lit_segments("-") == {3}, lit_segments("-"))
 
+# ---------------------------------------------------------------- screen redraws
+# These use the node simulator's virtual panel, which decodes the driver's real SPI
+# command stream into a framebuffer, so they check what the glass would show.
+print("Screen redraws")
+sys.path.insert(0, str(ROOT / "tools"))
+import simulate_node as SIM                          # noqa: E402
+
+
+def screen_after(steps, node="fan"):
+    """Framebuffer after applying a list of (method, args) to a fresh Screen."""
+    panel = SIM.VirtualPanel()
+    tft = SIM.st7789.ST7789(panel, panel.cs, panel.dc, rotation=1)
+    tft.init()
+    scr = SIM.display_ui.Screen(tft, node)
+    scr.layout()
+    for name, args in steps:
+        getattr(scr, name)(*args)
+    return bytes(panel.fb)
+
+
+# A value that needs fewer digits than the one before it must not leave the old
+# ones on screen: going from fan level 10 to 7 used to display "70".
+shrunk = screen_after([("fan", (10, "auto", None)), ("fan", (7, "auto", None))])
+clean = screen_after([("fan", (7, "auto", None))])
+check("fan 10 -> 7 leaves no stale digit", shrunk == clean,
+      "%d bytes differ" % sum(1 for a, b in zip(shrunk, clean) if a != b))
+
+shrunk = screen_after([("fan", (10, "auto", None)), ("fan", (None, "", None))])
+clean = screen_after([("fan", (None, "", None))])
+check("fan 10 -> no level leaves no stale digit", shrunk == clean,
+      "%d bytes differ" % sum(1 for a, b in zip(shrunk, clean) if a != b))
+
+shrunk = screen_after([("flow", (212, "pitot")), ("flow", (96, "pitot"))], node="laser")
+clean = screen_after([("flow", (96, "pitot"))], node="laser")
+check("flow 212 -> 96 leaves no stale digit", shrunk == clean,
+      "%d bytes differ" % sum(1 for a, b in zip(shrunk, clean) if a != b))
+
+shrunk = screen_after([("flow", (212, "pitot")), ("flow", (None, "no PC link"))], node="laser")
+clean = screen_after([("flow", (None, "no PC link"))], node="laser")
+check("flow 212 -> --- leaves no stale digit", shrunk == clean,
+      "%d bytes differ" % sum(1 for a, b in zip(shrunk, clean) if a != b))
+
 print()
 print(f"{passed} passed, {failed} failed")
 sys.exit(0 if failed == 0 else 1)
