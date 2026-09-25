@@ -3,13 +3,19 @@
     python tools/upload.py                 # first USB serial port found
     python tools/upload.py --port COM8
     python tools/upload.py --no-reset      # leave it at the REPL
+    python tools/upload.py --config config_fan.py --port COM8
 
-Copies lib/, config.py (or config_example.py if there is none) and main.py,
-skipping __pycache__. main.py goes last so a half-finished upload never boots
-a mix of old and new code.
+Copies lib/, the box's config and main.py, skipping __pycache__. main.py goes
+last so a half-finished upload never boots a mix of old and new code.
+
+Each box keeps its own git-ignored config on the PC (config_laser.py,
+config_fan.py, ...); --config picks one and it lands on the board as config.py,
+which is the only name main.py reads. Without --config, config.py is used if it
+exists; with several config_*.py files and no choice made, nothing is uploaded.
 """
 
 import argparse
+import re
 import importlib.util
 import shutil
 import subprocess
@@ -36,31 +42,53 @@ def mpremote() -> list:
     sys.exit(f"mpremote not found for {sys.executable} or on PATH — pip install mpremote")
 
 
-def files() -> list:
+def pick_config(choice) -> Path:
+    if choice:
+        path = Path(choice)
+        path = path if path.is_absolute() or path.exists() else ROOT / path
+        if not path.exists():
+            sys.exit(f"{choice} not found")
+        return path
+    if (ROOT / "config.py").exists():
+        return ROOT / "config.py"
+    boxes = sorted(p.name for p in ROOT.glob("config_*.py") if p.name != "config_example.py")
+    if boxes:
+        sys.exit("which box? pass --config with one of: " + ", ".join(boxes))
+    print("no config found - uploading config_example.py; the node will run with that")
+    return ROOT / "config_example.py"
+
+
+def node_id(config: Path) -> str:
+    m = re.search(r'^NODE_ID\s*=\s*["\']([^"\']+)', config.read_text(encoding="utf-8"), re.M)
+    return m.group(1) if m else "?"
+
+
+def files(config: Path) -> list:
+    """(source, destination on the board) pairs, main.py last."""
     lib = [p for p in sorted((ROOT / "lib").rglob("*.py")) if "__pycache__" not in p.parts]
-    config = ROOT / "config.py"
-    if not config.exists():
-        print("config.py not found — uploading config_example.py; the node will run with that")
-        config = ROOT / "config_example.py"
-    return lib + [config, ROOT / "main.py"]
+    return ([(p, p.relative_to(ROOT).as_posix()) for p in lib]
+            + [(config, "config.py"), (ROOT / "main.py", "main.py")])
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--port", default="auto", help="COM8, /dev/ttyUSB0 … (default: auto)")
     ap.add_argument("--no-reset", action="store_true", help="don't reset after copying")
+    ap.add_argument("--config", help="this box's config, e.g. config_fan.py (sent as config.py)")
     args = ap.parse_args()
 
-    todo = files()
-    dirs = sorted({p.parent.relative_to(ROOT).as_posix() for p in todo if p.parent != ROOT})
+    config = pick_config(args.config)
+    todo = files(config)
+    dirs = sorted({d.rsplit("/", 1)[0] for _, d in todo if "/" in d})
     dirs = sorted({"/".join(d.split("/")[:i + 1]) for d in dirs for i in range(d.count("/") + 1)})
 
     cmd = mpremote() + ["connect", args.port, "exec", MKDIRS.format(dirs=dirs)]
-    for p in todo:
-        cmd += ["+", "fs", "cp", str(p), ":" + p.relative_to(ROOT).as_posix()]
+    for src, dest in todo:
+        cmd += ["+", "fs", "cp", str(src), ":" + dest]
     if not args.no_reset:
         cmd += ["+", "reset"]
 
+    print(f"config: {config.name} -> :config.py (NODE_ID '{node_id(config)}')")
     print(f"uploading {len(todo)} files to {args.port}")
     sys.exit(subprocess.call(cmd))
 

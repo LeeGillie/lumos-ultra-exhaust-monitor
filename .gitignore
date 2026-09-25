@@ -10,6 +10,9 @@ firmware/include/lumosair_config.h
 Thumbs.db
 .DS_Store
 firmware/micropython/config.py
+# per-box configs (config_laser.py, config_fan.py, ...) hold Wi-Fi credentials
+firmware/micropython/config_*.py
+!firmware/micropython/config_example.py
 firmware/micropython/manifest.json
 firmware/micropython/out/
 

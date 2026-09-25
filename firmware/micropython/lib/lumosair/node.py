@@ -117,9 +117,12 @@ class Node:
         if getattr(cfg, "BENCH_SIMULATE", False):
             from . import benchsim
             profile = getattr(cfg, "BENCH_PROFILE", "A")
+            # The fan box owns the fan level (set_level lands in self.fan); the
+            # laser box only learns it from the app's status broadcast.
+            level = (lambda: self.fan.level) if cfg.IS_FAN_NODE else (lambda: self.bench_level)
             for ch in self.channels:
                 ch.mux = benchsim.NoMux()
-                ch.driver = benchsim.Driver(ch.name, profile, lambda: self.bench_level)
+                ch.driver = benchsim.Driver(ch.name, profile, level)
             self.log("BENCH MODE: simulated sensor readings, profile %s" % profile)
 
         self._load_offsets()
