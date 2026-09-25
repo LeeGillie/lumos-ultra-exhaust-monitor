@@ -96,11 +96,13 @@ class _FrameBuffer:
     def __init__(self, buf, w, h, fmt=None):
         self.buf, self.w, self.h = buf, w, h
 
+    # MicroPython stores RGB565 little-endian (low byte first). Storing it the other
+    # way round here once hid a driver bug that only showed on the real panel.
     def _set(self, x, y, c):
         if 0 <= x < self.w and 0 <= y < self.h:
             i = (y * self.w + x) * 2
-            self.buf[i] = (c >> 8) & 0xFF
-            self.buf[i + 1] = c & 0xFF
+            self.buf[i] = c & 0xFF
+            self.buf[i + 1] = (c >> 8) & 0xFF
 
     def pixel(self, x, y, c=None):
         if c is not None:
@@ -109,7 +111,7 @@ class _FrameBuffer:
         if not (0 <= x < self.w and 0 <= y < self.h):
             return 0
         i = (y * self.w + x) * 2
-        return (self.buf[i] << 8) | self.buf[i + 1]
+        return self.buf[i] | (self.buf[i + 1] << 8)
 
     def fill(self, c):
         for y in range(self.h):
@@ -203,10 +205,10 @@ class VirtualPanel:
         self._args = bytearray()
 
     def _pixels(self, data):
-        # The driver writes RGB565 already byte-swapped for the panel; undo that
-        # here so the PNG comes out the right colour.
+        # Decode exactly as the ST7789 does in 16-bit mode (COLMOD 0x55): each pixel
+        # is two bytes, high byte first.
         for i in range(0, len(data) - 1, 2):
-            lo, hi = data[i], data[i + 1]
+            hi, lo = data[i], data[i + 1]
             if self.x0 <= self.cx < self.w and self.y0 <= self.cy < self.h:
                 j = (self.cy * self.w + self.cx) * 2
                 self.fb[j] = hi

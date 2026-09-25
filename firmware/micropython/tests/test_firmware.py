@@ -305,6 +305,56 @@ clean = screen_after([("flow", (None, "no PC link"))], node="laser")
 check("flow 212 -> --- leaves no stale digit", shrunk == clean,
       "%d bytes differ" % sum(1 for a, b in zip(shrunk, clean) if a != b))
 
+
+# Fills and text must reach the panel in the same byte order. They didn't: fill_rect
+# wrote high byte first, framebuf writes low byte first, so on the real ST7789 the
+# dark background came out pink and the status band stopped where the text did.
+def panel_rgb(panel, x, y):
+    j = (y * panel.w + x) * 2
+    v = (panel.fb[j] << 8) | panel.fb[j + 1]
+    return ((v >> 11) & 0x1F) * 255 // 31, ((v >> 5) & 0x3F) * 255 // 63, (v & 0x1F) * 255 // 31
+
+
+panel = SIM.VirtualPanel()
+tft = SIM.st7789.ST7789(panel, panel.cs, panel.dc, rotation=1)
+tft.init()
+tft.fill_rect(0, 0, 40, 40, SIM.st7789.RED)
+tft.text(" ", 100, 0, SIM.st7789.WHITE, SIM.st7789.RED, 2)
+fill_px, text_px = panel_rgb(panel, 5, 5), panel_rgb(panel, 104, 4)
+check("fill_rect and text background give the same colour", fill_px == text_px,
+      (fill_px, text_px))
+check("red decodes as red on the panel", fill_px[0] > 200 and fill_px[1] < 100 and fill_px[2] < 100,
+      fill_px)
+tft.fill_rect(0, 0, 40, 40, SIM.st7789.DARK)
+check("the dark background decodes as near-black, not pink", max(panel_rgb(panel, 5, 5)) < 40,
+      panel_rgb(panel, 5, 5))
+
+# ---------------------------------------------------------------- bench mode
+print("Bench mode")
+from lumosair import benchsim                # noqa: E402
+
+check("bench table matches the simulator's profiles",
+      all(benchsim.PROFILES[o][lvl][k.split("/", 1)[1]] == v
+          for o, levels in SIM._PROFILES.items() for lvl in range(11)
+          for k, v in levels[str(lvl)].items()))
+
+level = [7]
+bench = Channel({"name": "cyc_dp", "mux": 0, "type": "sdp810"}, None, benchsim.NoMux())
+bench.driver = benchsim.Driver("cyc_dp", "A", lambda: level[0])
+check("bench channel starts", bench.start())
+for _ in range(5):
+    bench.sample()
+pa, _t = bench.drain()
+check("bench reads the model's value at level 7 (111.15 Pa, within the wobble)",
+      abs(pa - 111.15) <= 111.15 * 0.013, pa)
+level[0] = 3
+bench.sample()
+check("bench follows the fan level", abs(bench.drain()[0] - 20.03) <= 20.03 * 0.013)
+
+no_cyclone = Channel({"name": "cyc_dp", "mux": 0, "type": "sdp810"}, None, benchsim.NoMux())
+no_cyclone.driver = benchsim.Driver("cyc_dp", "C", lambda: 7)
+check("Option C has no cyclone, so its channel is not found", not no_cyclone.start())
+
 print()
 print(f"{passed} passed, {failed} failed")
 sys.exit(0 if failed == 0 else 1)

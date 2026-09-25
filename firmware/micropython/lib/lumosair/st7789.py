@@ -6,7 +6,8 @@ this driver keeps one reusable stripe buffer and paints regions: solid fills,
 
 Wiring (module pulls RES and BLK high itself, so those pins are optional):
     SCL -> SPI SCK      SDA -> SPI MOSI     DC -> any GPIO
-    CS  -> any GPIO     VCC -> 3V3          GND -> GND
+    CS  -> any GPIO     V   -> 5V or 3V3    G   -> GND
+(V feeds the module's own 3.3 V regulator; the signal pins are 3.3 V only.)
 """
 
 try:
@@ -102,10 +103,13 @@ class ST7789:
             return
         rows = max(1, min(h, len(self._buf) // (2 * w)))
         chunk = memoryview(self._buf)[:w * rows * 2]
-        hi, lo = color >> 8, color & 0xFF
+        # Same byte order framebuf uses for RGB565 (low byte of the swapped value
+        # first), so fills and text arrive at the panel identically. Writing the high
+        # byte first here turned the dark background pink on real hardware.
+        first, second = color & 0xFF, color >> 8
         for i in range(0, len(chunk), 2):
-            chunk[i] = hi
-            chunk[i + 1] = lo
+            chunk[i] = first
+            chunk[i + 1] = second
         done = 0
         while done < h:
             n = min(rows, h - done)
@@ -116,28 +120,36 @@ class ST7789:
         self.fill_rect(0, 0, self.width, self.height, color)
 
     def text(self, s, x, y, fg=WHITE, bg=DARK, scale=1):
-        """8x8 font, optionally scaled. Paints its own background (no flicker)."""
+        """8x8 font, optionally scaled. Paints its own background (no flicker).
+
+        Scaled text goes out one character at a time, so any length fits the
+        stripe buffer (a scale-4 glyph is 32x32, 2 KB).
+        """
         if framebuf is None:
             return
-        w, h = 8 * len(s) * scale, 8 * scale
-        if w * h * 2 > len(self._buf):
-            s = s[:len(self._buf) // (2 * 64 * scale * scale)]
-            w = 8 * len(s) * scale
-        mv = memoryview(self._buf)[:w * h * 2]
-        fb = framebuf.FrameBuffer(mv, w, h, framebuf.RGB565)
-        fb.fill(bg)
         if scale == 1:
+            s = s[:len(self._buf) // 128]
+            w = 8 * len(s)
+            mv = memoryview(self._buf)[:w * 16]
+            fb = framebuf.FrameBuffer(mv, w, 8, framebuf.RGB565)
+            fb.fill(bg)
             fb.text(s, 0, 0, fg)
-        else:
-            small = framebuf.FrameBuffer(bytearray(8 * len(s) * 8 * 2), 8 * len(s), 8, framebuf.RGB565)
-            small.fill(bg)
-            small.text(s, 0, 0, fg)
+            self.blit(mv, x, y, w, 8)
+            return w
+        cw = 8 * scale
+        mv = memoryview(self._buf)[:cw * cw * 2]
+        fb = framebuf.FrameBuffer(mv, cw, cw, framebuf.RGB565)
+        glyph = framebuf.FrameBuffer(bytearray(128), 8, 8, framebuf.RGB565)
+        for i, ch in enumerate(s):
+            glyph.fill(bg)
+            glyph.text(ch, 0, 0, fg)
+            fb.fill(bg)
             for yy in range(8):
-                for xx in range(8 * len(s)):
-                    if small.pixel(xx, yy) == fg:
+                for xx in range(8):
+                    if glyph.pixel(xx, yy) == fg:
                         fb.fill_rect(xx * scale, yy * scale, scale, scale, fg)
-        self.blit(mv, x, y, w, h)
-        return w
+            self.blit(mv, x + i * cw, y, cw, cw)
+        return cw * len(s)
 
     def seg7(self, s, x, y, digit_w=34, digit_h=58, thick=7, color=WHITE, bg=DARK, gap=10):
         """Seven-segment number, e.g. '142'. Much cheaper than a scaled font."""

@@ -111,6 +111,17 @@ class Node:
         self.fan = FanOutput(cfg, log)
         self.led = Pin(cfg.STATUS_LED, Pin.OUT) if cfg.STATUS_LED is not None else None
 
+        # Bench mode: no sensors wired, so report what the model predicts at the fan
+        # level the app last broadcast. Everything downstream of the sensors is real.
+        self.bench_level = 7
+        if getattr(cfg, "BENCH_SIMULATE", False):
+            from . import benchsim
+            profile = getattr(cfg, "BENCH_PROFILE", "A")
+            for ch in self.channels:
+                ch.mux = benchsim.NoMux()
+                ch.driver = benchsim.Driver(ch.name, profile, lambda: self.bench_level)
+            self.log("BENCH MODE: simulated sensor readings, profile %s" % profile)
+
         self._load_offsets()
         for ch in self.channels:
             self.log("channel %-8s %s" % (ch.name, "ok" if ch.start() else "NOT FOUND"))
@@ -136,7 +147,7 @@ class Node:
                      rotation=cfg.DISPLAY_ROTATION)
         tft.init()
         self.screen = Screen(tft, cfg.NODE_ID)
-        self.screen.splash("starting…")
+        self.screen.splash("starting...")
 
     # ---------------- zero offsets ----------------
     def _load_offsets(self):
@@ -200,7 +211,7 @@ class Node:
     def do_update(self, url):
         from . import ota
         if self.screen:
-            self.screen.splash("updating over wi-fi…")
+            self.screen.splash("updating...")
         try:
             if ota.update(url, self.log):
                 sleep_ms(300)
@@ -282,6 +293,8 @@ class Node:
 
             self.link.poll_commands(self.handle)
             status = self.link.poll_status()
+            if status and (status.get("fan") or {}).get("level") is not None:
+                self.bench_level = status["fan"]["level"]
 
             if self.screen and ticks_diff(now, self._last_draw) >= cfg.DISPLAY_INTERVAL_MS:
                 self._last_draw = now
@@ -302,6 +315,8 @@ class Node:
             s.status("stale", ip=self.wlan.ifconfig()[0] if self.wlan else None)
             s.flow(None, "no link to PC")
             s.fan(self.fan.level if self.cfg.IS_FAN_NODE else None, self.fan.mode, None)
-            s.headline("Sensors live; PC app not broadcasting", "info")
+            ok = sum(1 for c in self.channels if c.ok)
+            s.headline("PC app not running. Sensors %d/%d OK" % (ok, len(self.channels)),
+                       "stale")
         s.channels([(c.name, c.last_pa if c.last_pa is not None else 0.0, c.ok)
                     for c in self.channels])

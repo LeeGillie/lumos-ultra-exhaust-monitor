@@ -208,6 +208,34 @@
       "options": { "cwd": "${workspaceFolder}/firmware/micropython" },
       "isBackground": true,
       "problemMatcher": []
+    },
+
+    {
+      // USB: copies lib/, config.py and main.py (unchanged files are skipped), then resets.
+      // Needs mpremote in the `python` VS Code runs, or on PATH.
+      "label": "device: upload firmware (USB)",
+      "type": "process",
+      "command": "python",
+      "args": ["tools/upload.py"],
+      "options": { "cwd": "${workspaceFolder}/firmware/micropython" },
+      "presentation": { "group": "device", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      // Ctrl+C stops main.py, Ctrl+D soft-reboots and shows the boot log, Ctrl+] leaves.
+      "label": "device: REPL (USB)",
+      "type": "process",
+      "command": "python",
+      "args": ["-m", "mpremote", "connect", "auto", "repl"],
+      "options": { "cwd": "${workspaceFolder}/firmware/micropython" },
+      "presentation": { "group": "device", "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "device: upload + REPL (USB)",
+      "dependsOrder": "sequence",
+      "dependsOn": ["device: upload firmware (USB)", "device: REPL (USB)"],
+      "problemMatcher": []
     }
   ],
 

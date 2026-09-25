@@ -33,6 +33,12 @@ DISPLAY_INTERVAL_MS = 500
 ENV_INTERVAL_MS = 2000
 WATCHDOG_MS = 20000              # 0 disables the watchdog
 
+# ---------------- bench mode ----------------
+# No sensors wired? Report what the app's model predicts at the current fan level
+# instead (lib/lumosair/benchsim.py). Telemetry, display and commands stay real.
+# Never leave this on in an installed box.
+BENCH_SIMULATE = False
+BENCH_PROFILE = "A"              # "A" (separator at the laser) or "C" (today's system)
 # ---------------- I2C / sensors ----------------
 I2C_SDA = 21
 I2C_SCL = 22

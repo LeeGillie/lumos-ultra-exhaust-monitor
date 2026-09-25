@@ -120,7 +120,7 @@
     },
 
     {
-      "name": "Tests: app (41 checks)",
+      "name": "Tests: app (45 checks)",
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build app",
@@ -131,7 +131,7 @@
       "stopAtEntry": false
     },
     {
-      "name": "Tests: firmware (31 checks, plain CPython)",
+      "name": "Tests: firmware (51 checks, plain CPython)",
       "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/firmware/micropython/tests/test_firmware.py",

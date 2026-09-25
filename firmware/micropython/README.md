@@ -14,6 +14,8 @@ lib/lumosair/
   fan.py                fan level output (disabled until the UIS pinout is verified)
   ota.py                pull updates over Wi-Fi
   node.py               sampling loop and command handling
+  benchsim.py           bench mode: model-predicted readings when no sensors are wired
+tools/upload.py         copy the firmware to a board over USB (mpremote)
 tools/serve_update.py   serve this folder to the nodes for OTA
 tools/send_command.py   zero / set_level / update / watch telemetry from a PC
 tools/simulate_node.py  run a node on the PC and render its screen to a PNG
@@ -22,22 +24,68 @@ tests/test_firmware.py  host tests (plain CPython, no hardware)
 
 ## Set up VS Code
 
-1. Install the **MicroPico** extension.
+1. `mpremote` does everything from the terminal; the **MicroPico** extension is optional.
 2. Flash MicroPython once over USB:
    ```
    pip install esptool mpremote
-   esptool --chip esp32 erase_flash
-   esptool --chip esp32 write_flash -z 0x1000 ESP32_GENERIC-<version>.bin
+   esptool --chip esp32 --port COM5 erase-flash
+   esptool --chip esp32 --port COM5 write-flash -z 0x1000 ESP32_GENERIC-<version>.bin
    ```
+   esptool 5.x spells these with hyphens; the old `erase_flash` / `write_flash`
+   are deprecated. Find the port with `python -m serial.tools.list_ports -v`:
+   the board shows as a CP210x (VID 10C4) or CH340 (VID 1A86). If nothing new
+   appears when you plug it in, suspect a charge-only cable first.
 3. Copy `config_example.py` to `config.py`, set your Wi-Fi, node id and channel map.
+   On the bench set `WATCHDOG_MS = 0`: once started, the ESP32 watchdog can't be
+   stopped, so it resets the board 20 s after you break into the REPL.
 4. Upload:
    ```
-   mpremote connect COM5 fs cp -r lib :
-   mpremote connect COM5 fs cp main.py config.py :
-   mpremote connect COM5 reset
+   python tools/upload.py --port COM5
    ```
-   MicroPico's "Upload project to Pico" does the same from the VS Code toolbar.
-5. `mpremote connect COM5 repl` shows the boot log; each channel should print `ok`.
+   It copies `lib/`, `config.py` and `main.py` (last), skips `__pycache__` and files
+   that haven't changed, then resets. In VS Code: *Run Task → device: upload firmware (USB)*.
+5. `mpremote connect COM5 repl` (or *device: REPL (USB)*) attaches; Ctrl+C stops
+   `main.py`, Ctrl+D soft-reboots and shows the boot log, where each channel should
+   print `ok`. Ctrl+] leaves.
+
+## Bench wiring (screw-terminal adapter)
+
+On the bench the DevKit sits in a generic "FOR ESP32 TERMINAL ADAPTER". Its labels
+are right, but only under three conditions; each one cost an evening:
+
+- **USB connector at the 5V/CLK end**, antenna at the 3V3/GND end. The vendor's
+  product photo shows it rotated 180°. Seated that way, "3V3" is the flash clock,
+  the left "GND" is GPIO21 and "P13" is RX: boot loops, I²C timeouts, a dead REPL
+  and a reverse-powered display.
+- **Wire the screw terminals, never the spare header sockets.** The terminals are
+  3.5 mm apart and the sockets 2.54 mm, so a label drifts 1–3 sockets from its pin.
+- **Leave SD0–SD3, CND, CLK, P12, TX and RX empty.** "CND" is CMD (GPIO11, a flash
+  pin), not ground. P12 high at reset drops the flash to 1.8 V.
+
+The display (NULLLAB SWIFT-LCD-20) — go by the labels at its connector, not by
+wire colour; on the supplied pigtail red is CS and blue is power:
+
+| Display | Terminal | GPIO |
+|---|---|---|
+| V | 5V | — (module has its own 3.3 V regulator) |
+| G | GND | — |
+| SCL | P14 | 14 (SCK) |
+| SDA | P13 | 13 (MOSI) |
+| DC | P27 | 27 |
+| CS | P15 | 15 |
+
+The sourced write-up is in
+[docs/research/ESP32 display wiring verification.md](../../docs/research/ESP32%20display%20wiring%20verification.md).
+
+## Bench mode
+
+With no sensors wired, set `BENCH_SIMULATE = True` in `config.py`. Each channel then
+reports what the app's model predicts it reads at the fan level in the app's
+status broadcast (`lib/lumosair/benchsim.py`, profile `BENCH_PROFILE` = `A` or
+`C`). Telemetry, Wi-Fi, the display and commands all stay real, so the real box,
+a simulated fan box (`tools/simulate_node.py --live --node fan --config A`) and the
+app with the matching `system.optionA.json` show normal operation end to end.
+**Turn it off before a box goes on the duct.**
 
 ## Updating over Wi-Fi
 
@@ -53,16 +101,18 @@ writes them and reboots. Set `OTA_URL` in `config.py` to the address the tool pr
 
 ## What the box screen shows
 
-The 2.0" ST7789 shows both what the node measures and what the PC concludes:
+The 2.0" ST7789 is read from across the room, so it shows only what you act on:
 
-- a colour status band (green / amber / orange / red) and the node name,
-- the system airflow in CFM, from the PC's broadcast, with its source,
-- the fan level, whether control is Auto or Manual, and the recommended level,
-- the top finding in plain words ("Dust bin appears to be leaking"),
-- every channel on that node in Pa, with a bar and a fault flag.
+- a full-width status band: ALL GOOD / ADVICE / CHECK / PROBLEM, or **NO PC**
+  when no status has arrived from the app for 10 s,
+- the system airflow in CFM and the fan level, 100 px tall,
+- **SET n** in amber under the fan level when the app wants the dial moved,
+- the app's top finding in plain words, on two large lines,
+- one block per sensor along the bottom: green responding, orange not.
 
-If the PC app isn't running the screen says so and keeps showing live pressures,
-so the box is still useful on its own.
+The app sends its status straight to each box it has heard from (a plain
+255.255.255.255 broadcast leaves Windows by one adapter only, which on a PC with
+Hyper-V or a VPN is often not the LAN).
 
 ## Fan control
 
@@ -122,7 +172,8 @@ bars each digit lights.
 python tests/test_firmware.py
 ```
 
-39 checks covering the CRC and scaling maths, the multiplexer, channel averaging
+51 checks covering the CRC and scaling maths, the multiplexer, channel averaging
 and zero offsets, the fan level mapping, the telemetry payload the PC app parses,
-and the display driver — including which segments each digit lights. Only the pin
-wiggling needs hardware.
+the display driver — which segments each digit lights, and that fills and text
+reach the panel in the same byte order — and bench mode. Only the pin wiggling
+needs hardware.
