@@ -78,8 +78,16 @@ public sealed class UdpTelemetrySource : ITelemetrySource
     public async Task BroadcastStatusAsync(string json, CancellationToken ct)
     {
         if (_client is null) return;
-        await _client.SendAsync(Encoding.UTF8.GetBytes(json),
-            new IPEndPoint(IPAddress.Broadcast, _statusPort), ct);
+        var bytes = Encoding.UTF8.GetBytes(json);
+        // Windows sends 255.255.255.255 out of one adapter only, the lowest-metric one.
+        // On a PC with Hyper-V or a VPN that is often a virtual switch, not the LAN the
+        // boxes are on, so they never saw a status and sat on "NO PC". Send to every
+        // node we have heard from instead, and broadcast only until we have heard one.
+        var nodes = _nodeAddresses.Values.Distinct().ToList();
+        if (nodes.Count == 0)
+            await _client.SendAsync(bytes, new IPEndPoint(IPAddress.Broadcast, _statusPort), ct);
+        foreach (var addr in nodes)
+            await _client.SendAsync(bytes, new IPEndPoint(addr, _statusPort), ct);
     }
 
     public async ValueTask DisposeAsync()
