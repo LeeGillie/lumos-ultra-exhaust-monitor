@@ -20,8 +20,15 @@ firmware/micropython/out/
 __pycache__/
 *.pyc
 
-# Vendor 3D models and datasheets - large, and not ours to redistribute
-docs/3D Models/
+# 3D Models: vendor downloads (GrabCAD etc.) are not ours to redistribute - skip them,
+# but track our own Blender project, scripts, textures and finished stills.
+docs/3D Models/*
+!docs/3D Models/Project/
+docs/3D Models/Project/*.blend1
+docs/3D Models/Project/assets/
+docs/3D Models/Project/renders/*/
+docs/3D Models/Project/renders/*.txt
+docs/3D Models/Project/renders/*.mp4
 
 # Proteus per-user workspace state
 *.pdsprj.*.workspace
