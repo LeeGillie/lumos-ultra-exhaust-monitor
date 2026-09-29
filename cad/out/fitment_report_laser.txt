@@ -4,8 +4,8 @@ outside 120 x 90 x 60.5 mm, inside 112.9 x 78.9 x 54.5 mm
 Stack
   PCB-A underside         4.0 mm (standoffs off the floor)
   PCB-B underside        34.0 mm (spacers off PCB-A)
-  tallest item           51.5 mm  (latching switch body)
-  headroom under lid      3.0 mm
+  tallest item           45.8 mm  (display glass)
+  headroom under lid      8.7 mm
 
 Parts
   PCB-A (sensor board)               x    4.0– 108.9  y   34.0–  74.9  z   4.0–  5.6
@@ -22,17 +22,17 @@ Parts
   barb encl-1                        x   64.9–  70.1  y   42.6–  47.8  z  15.8– 25.5
   barb pitot+1                       x   42.9–  48.1  y   55.2–  60.4  z  15.8– 25.5
   barb pitot-1                       x   42.9–  48.1  y   42.6–  47.8  z  15.8– 25.5
+  USB-C coupler, 5 V POWER           x    0.0–  34.0  y    9.0–  31.0  z  16.0– 40.0
+  USB-C coupler, FAN (UIS)           x   78.9– 112.9  y    9.0–  31.0  z  16.0– 40.0
   elbow CYC +                        x   19.9–  27.1  y   33.2–  45.2  z  17.9– 25.1
   elbow CYC −                        x   19.9–  27.1  y   45.8–  57.8  z  17.9– 25.1
   elbow ENCL                         x   63.9–  71.1  y   45.8–  57.8  z  17.9– 25.1
   elbow PITOT S                      x   41.9–  49.1  y   45.8–  57.8  z  17.9– 25.1
   elbow PITOT T                      x   41.9–  49.1  y   33.2–  45.2  z  17.9– 25.1
-  cable gland body                   x    0.0–  18.0  y   12.2–  27.8  z  20.2– 35.8
   PCB-B (processor + display hat)    x    4.0– 108.9  y   34.0–  74.9  z  34.0– 35.6
   BME280                             x   88.0–  92.0  y   67.9–  71.9  z  35.6– 36.8
   ESP32-WROOM-32E (soldered)         x   67.0–  85.0  y   36.0–  61.5  z  35.6– 38.7
   TCA9548A mux                       x   88.0–  96.0  y   37.0–  43.5  z  35.6– 36.8
-  latching switch body               x   49.0–  64.0  y    0.0–  22.0  z  36.5– 51.5
   2.0" ST7789 display                x    8.0–  64.0  y   34.5–  74.5  z  41.6– 43.2
   display glass                      x   11.5–  60.5  y   38.0–  71.0  z  43.2– 45.8
 
@@ -59,8 +59,7 @@ Bulkheads (identical on both boxes)
     x   45.5  z 27.0   PITOT S
     x   67.5  z 27.0   ENCL
     x   89.5  z 27.0   RUN
-  gland Ø12.5 mm at y 20, z 28 (left end wall)
-  switch Ø12.0 mm at x 56.5, z 44 (front wall, above the ports)
+  USB-C couplers: Ø24 mm + 2 x M3 at y 20, z 28 — left end wall 5 V POWER, right end wall FAN (UIS). No switch on the box.
 
 How much bigger is the box than the display?
   lid           108.0 cm²

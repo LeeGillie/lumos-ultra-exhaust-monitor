@@ -53,14 +53,15 @@ STATUS_LED = 2                   # None to disable
 # XGZP k: below 1 kPa -> 8192, a ±1 kPa part -> 4096 (datasheet range table).
 if NODE_ID == "fan":
     CHANNELS = (
-        {"name": "fan_in", "mux": 0, "type": "xgzp", "k": 4096, "sign": 1},
+        {"name": "fan_in", "mux": 1, "type": "xgzp", "k": 4096, "sign": -1},   # rev B board: run carrier = ch1, port 2 on the hose
     )
 else:
+    # Channel map = PCB-A rev B (docs/pcb-a/cnc/README_CNC.md): ch0 pitot, ch1 run_in, ch2 bin, ch3 cyc_dp, ch4 encl
     CHANNELS = (
-        {"name": "cyc_dp", "mux": 0, "type": "sdp810", "sign": 1},   # + inlet tap, − outlet tap
-        {"name": "bin",    "mux": 1, "type": "xgzp", "k": 4096, "sign": 1},
-        {"name": "pitot",  "mux": 2, "type": "sdp810", "sign": 1},   # + total, − static
-        {"name": "run_in", "mux": 3, "type": "xgzp", "k": 4096, "sign": 1},
+        {"name": "cyc_dp", "mux": 3, "type": "sdp810", "sign": 1},   # + inlet tap, − outlet tap
+        {"name": "bin",    "mux": 2, "type": "xgzp", "k": 4096, "sign": -1},   # port 2 on the hose (rev B carrier)
+        {"name": "pitot",  "mux": 0, "type": "sdp810", "sign": 1},   # + total, − static
+        {"name": "run_in", "mux": 1, "type": "xgzp", "k": 4096, "sign": -1},   # port 2 on the hose (rev B carrier)
         {"name": "encl",   "mux": 4, "type": "sdp810", "sign": 1},
     )
 

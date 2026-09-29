@@ -22,3 +22,6 @@ __pycache__/
 
 # Vendor 3D models and datasheets - large, and not ours to redistribute
 docs/3D Models/
+
+# Proteus per-user workspace state
+*.pdsprj.*.workspace

@@ -81,18 +81,22 @@ ELBOW_RISE = 4.0                 # outlet centreline, below the barb tip
 BULK_HEX_AF = 11.0               # across flats, outside the wall
 BULK_BARB_LEN = 12.0             # barb length each side
 HOSE_ZONE = 22.0                 # free depth between the bulkhead barbs and PCB-A
-GLAND_DIA = 12.5
-SWITCH_DIA = 12.0                # 12 mm anti-vandal latching switch, illuminated ring
-SWITCH_BODY_DIA = 15.0
-SWITCH_BODY_LEN = 22.0
-# The switch shares the marked front face with the ports — centred, above the hose
-# runs, clear of the corner bosses. The gland goes in the left end wall, in the strip
-# beside the hoses. Neither fits on the back wall of a 90 mm-deep box without
-# fouling PCB-B.
-SWITCH_Z = 44.0
-GLAND_Z = 28.0
-GLAND_Y = 20.0
-GLAND_BODY_LEN = 18.0
+# Two USB-C panel couplers (MECCANIXITY "D-type", 31 x 26 mm flange), one per end wall:
+#   left  — 5 V POWER in, from a USB supply
+#   right — FAN (UIS), the AC Infinity fan lead; only the fan box uses it
+# UIS is USB-C shaped but is not USB, and a standard USB-C cable does not work between
+# the fan and its controller, so check the fan still answers its controller through a
+# coupler before relying on one. Same connector both ends: the engraving tells them
+# apart. There is no switch on the box; power is switched at the supply.
+# Cutout is the standard D-series one (Ø24 mm + two M3 on the diagonal); measure the
+# part before drilling.
+USBC_HOLE = 24.0
+USBC_SCREW_DIA = 3.2
+USBC_SCREWS = ((9.5, 12.0), (-9.5, -12.0))   # (along the wall, up) from the hole centre
+USBC_FLANGE = (26.0, 31.0)                   # width along the wall x height
+USBC_BODY = (34.0, 22.0, 24.0)               # behind the wall, incl. the plug inside
+USBC_Y = 20.0                                # both couplers, same place on each end wall
+USBC_Z = 28.0
 
 # ======================================================================================
 # Parts (sizes from the datasheets)
@@ -178,7 +182,6 @@ class Design:
     pcb_b_z: float = 0.0
     fittings: str = "elbow"
     display_standoff: float = DISPLAY_STANDOFF
-    switch_z: float = SWITCH_Z
     port_labels: list[tuple[float, float, str]] = field(default_factory=list)   # x, z, label
 
 
@@ -284,7 +287,19 @@ def assign_ports(exits, slots) -> list[int]:
     return list(best)
 
 
-def box_shell(box: Box, switch_z: float = SWITCH_Z, fittings: str = "elbow") -> cq.Workplane:
+def usbc_cutout(x_wall: float, outward: float) -> cq.Workplane:
+    """Ø24 hole + two M3 screw holes through an end wall at x_wall (outward = -1 left, +1 right)."""
+    depth = WALL + 4
+    cut = None
+    for dy, dz in ((0.0, 0.0),) + USBC_SCREWS:
+        d = USBC_HOLE if (dy, dz) == (0.0, 0.0) else USBC_SCREW_DIA
+        c = (cq.Workplane("YZ").circle(d / 2).extrude(outward * depth)
+             .translate((x_wall - outward * 2.0, USBC_Y + dy, USBC_Z + dz)))
+        cut = c if cut is None else cut.union(c)
+    return cut
+
+
+def box_shell(box: Box, fittings: str = "elbow") -> cq.Workplane:
     il, iw, ih = box.inside
     outer = (cq.Workplane("XY").box(*box.out, centered=False)
              .translate((-(box.out[0] - il) / 2, -(box.out[1] - iw) / 2, -WALL)))
@@ -297,12 +312,8 @@ def box_shell(box: Box, switch_z: float = SWITCH_Z, fittings: str = "elbow") -> 
     for (x, z) in port_positions(box, fittings):            # bulkheads through the front wall
         shell = shell.cut(cq.Workplane("XZ").circle(PORT_DIA / 2).extrude(WALL + 4)
                           .translate((x, 2.0, z)))
-    # power switch: front wall, centred, above the hose runs — same face as the labels
-    shell = shell.cut(cq.Workplane("XZ").circle(SWITCH_DIA / 2).extrude(WALL + 4)
-                      .translate((il / 2, 2.0, switch_z)))
-    # cable gland: left end wall, clear of the hoses
-    shell = shell.cut(cq.Workplane("YZ").circle(GLAND_DIA / 2).extrude(-(WALL + 4))
-                      .translate((2.0, GLAND_Y, GLAND_Z)))
+    # USB-C couplers: 5 V POWER in the left end wall, FAN (UIS) in the right
+    shell = shell.cut(usbc_cutout(0.0, -1)).cut(usbc_cutout(il, +1))
     return shell
 
 
@@ -464,18 +475,15 @@ def build(populate: str, box_code: str, mcu: str, fittings: str = "elbow") -> De
     d.parts.append(Part("display glass", DISPLAY_GLASS,
                         (dx + 3.5, dy + 3.5, dz + PCB_T), (0.05, 0.05, 0.08)))
 
-    # ---------------- power switch and cable gland ----------------
-    # The switch sits on the front face above the hose runs, so every marking Lee
-    # engraves is on one panel; the gland goes in the end wall, out of the hose zone.
-    sz = max(SWITCH_Z, max((t.top() for t in d.tubes), default=0) + SWITCH_BODY_DIA / 2 + 3.0)
-    d.switch_z = sz
-    d.parts.append(Part("latching switch body", (SWITCH_BODY_DIA, SWITCH_BODY_LEN, SWITCH_BODY_DIA),
-                        (il / 2 - SWITCH_BODY_DIA / 2, 0.0, sz - SWITCH_BODY_DIA / 2),
-                        (0.55, 0.55, 0.6),
-                        "Ø12 mm illuminated latching push button — the ring is the power LED"))
-    d.parts.append(Part("cable gland body", (GLAND_BODY_LEN, GLAND_DIA + 3, GLAND_DIA + 3),
-                        (0.0, GLAND_Y - (GLAND_DIA + 3) / 2, GLAND_Z - (GLAND_DIA + 3) / 2),
-                        (0.35, 0.35, 0.38), "USB supply lead, left end wall"))
+    # ---------------- USB-C couplers, one in each end wall ----------------
+    # The body includes the plug that goes in from the inside, so the fitment check
+    # sees what really takes up room behind the wall.
+    bl, bw, bh = USBC_BODY
+    for name, x0, note in (("USB-C coupler, 5 V POWER", 0.0, "left end wall; USB supply in"),
+                           ("USB-C coupler, FAN (UIS)", il - bl,
+                            "right end wall; AC Infinity fan lead (fan box only)")):
+        d.parts.append(Part(name, USBC_BODY, (x0, USBC_Y - bw / 2, USBC_Z - bh / 2),
+                            (0.35, 0.35, 0.38), note))
     d.port_labels = [(x, z, lab) for lab, (x, z) in zip(labels, port_positions(box, fittings))]
     return d
 
@@ -550,6 +558,19 @@ def report(d: Design) -> tuple[str, bool]:
                 clashes += 1
                 ok = False
                 L.append(f"  ** {a.name} ∩ {b.name}: {ox:.1f} x {oy:.1f} x {oz:.1f} mm **")
+    # Hoses against parts. Until this was added only parts were checked against each
+    # other, so a gland or coupler could sit right across a hose and report "none".
+    ends = ("barb", "elbow", "SDP810", "XGZP", "PCB-A")          # what a hose may touch
+    for t in d.tubes:
+        r = t.radius - 0.5
+        for p in interesting:
+            if p.name.startswith(ends):
+                continue
+            if any(p.pos[0] - r < x < p.x2 + r and p.pos[1] - r < y < p.y2 + r
+                   and p.pos[2] - r < z < p.z2 + r for x, y, z in t.points):
+                clashes += 1
+                ok = False
+                L.append(f"  ** hose {t.label} runs through {p.name} **")
     if clashes == 0:
         L.append("  none")
 
@@ -564,8 +585,8 @@ def report(d: Design) -> tuple[str, bool]:
     L.append(f"  {N_PORTS} x Ø{PORT_DIA:.0f} mm — {pattern}")
     for x, z, lab in d.port_labels:
         L.append(f"    x {x:6.1f}  z {z:4.1f}   {lab}")
-    L.append(f"  gland Ø{GLAND_DIA} mm at y {GLAND_Y:.0f}, z {GLAND_Z:.0f} (left end wall)")
-    L.append(f"  switch Ø{SWITCH_DIA} mm at x {il / 2:.1f}, z {d.switch_z:.0f} (front wall, above the ports)")
+    L.append(f"  USB-C couplers: Ø{USBC_HOLE:.0f} mm + 2 x M3 at y {USBC_Y:.0f}, z {USBC_Z:.0f} "
+             f"— left end wall 5 V POWER, right end wall FAN (UIS). No switch on the box.")
 
     lid_area = d.box.out[0] * d.box.out[1] / 100.0
     disp = DISPLAY_PCB[0] * DISPLAY_PCB[1] / 100.0
@@ -620,7 +641,7 @@ def pick_box(populate: str, mcu: str, fittings: str = "elbow") -> str:
 # ======================================================================================
 def assembly(d: Design) -> cq.Assembly:
     asm = cq.Assembly(name=f"LumosAir {d.populate} node")
-    asm.add(box_shell(d.box, d.switch_z, d.fittings), name="enclosure", color=cq.Color(0.55, 0.55, 0.58, 0.35))
+    asm.add(box_shell(d.box, d.fittings), name="enclosure", color=cq.Color(0.55, 0.55, 0.58, 0.35))
     il, iw, ih = d.box.inside
     asm.add(cq.Workplane("XY").box(d.box.out[0], d.box.out[1], LID_T, centered=False)
             .translate((-(d.box.out[0] - il) / 2, -(d.box.out[1] - iw) / 2, ih)),

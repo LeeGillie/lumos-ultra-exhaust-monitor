@@ -43,7 +43,7 @@ TUBE_COLOR = (0.90, 0.45, 0.15)
 def render(d: enc.Design, out: Path) -> None:
     il, iw, ih = d.box.inside
     ol, ow, oh = d.box.out
-    shell = enc.box_shell(d.box, d.switch_z, d.fittings)
+    shell = enc.box_shell(d.box, d.fittings)
 
     views = [
         ("render_iso.png", 24, -62,

@@ -9,13 +9,13 @@ moves its label, its hole and its PCB mounting hole together.
 
 Written files
     panel_front_laser.svg / panel_front_fan.svg   front face, 1:1, mm
-    panel_end.svg                                 left end wall (cable gland)
+    panel_end_power.svg / panel_end_fan.svg       end walls: USB-C 5 V POWER (left), FAN (right)
     drill_template_front.svg                      holes only, for marking out
     pcb_a_outline.dxf / pcb_b_outline.dxf         board edge + mounting holes
 
 The SVGs use two colours by convention:
     red   (#ff0000)  cut / drill — the holes themselves
-    black (#000000)  engrave     — text, frames, the power symbol
+    black (#000000)  engrave     — text, frames
 Most laser software maps colour to operation, so import and assign.
 """
 
@@ -77,14 +77,9 @@ class Svg:
 # ======================================================================================
 # panels
 # ======================================================================================
-def power_symbol(svg: Svg, cx: float, cy: float, r: float = 3.2):
-    """IEC 5009 standby mark, engraved above the button."""
-    svg.arc(cx, cy, r, math.radians(-65), math.radians(245))
-    svg.line(cx, cy - r - 1.3, cx, cy + 0.3)
-
 
 def panel_front(populate: str, out: Path, box_code: str, mcu: str, fittings: str) -> None:
-    """The face the hoses and the power button come through, 1:1, seen from outside."""
+    """The face the hoses come through, 1:1, seen from outside."""
     d = enc.build(populate, box_code, mcu, fittings)
     box = d.box
     ol, _, oh = box.out
@@ -112,27 +107,44 @@ def panel_front(populate: str, out: Path, box_code: str, mcu: str, fittings: str
         svg.text(cx, ty, lab, size=2.8,
                  fill=ENGRAVE if lab != "PLUG" else "#9a9a9a")
 
-    sx, sy = px(box.inside[0] / 2), py(d.switch_z)
-    svg.circle(sx, sy, enc.SWITCH_DIA / 2)
-    power_symbol(svg, sx - enc.SWITCH_DIA / 2 - 6.5, sy)
+
 
     svg.text(ol - 6.0, 8.0, f"LumosAir · {populate} node", size=3.4, anchor="end")
     svg.save(out / f"panel_front_{populate}.svg")
 
 
-def panel_end(out: Path, box_code: str, mcu: str, fittings: str) -> None:
+def panel_end(side: str, out: Path, box_code: str, mcu: str, fittings: str) -> None:
+    """An end wall with its USB-C coupler, 1:1, seen from outside.
+
+    Both walls carry the same connector, so the engraving is what tells them apart:
+    left = 5 V POWER from a USB supply, right = FAN, the AC Infinity UIS lead.
+    """
     d = enc.build("laser", box_code, mcu, fittings)
     box = d.box
     _, ow, oh = box.out
     iw = box.inside[1]
     dy, dz = (ow - iw) / 2, enc.WALL
+    label, sub, fname = {"power": ("5V POWER", "USB supply only", "panel_end_power.svg"),
+                         "fan": ("FAN", "AC Infinity UIS - not USB", "panel_end_fan.svg")}[side]
 
-    svg = Svg(ow, oh, "LumosAir — left end wall")
+    # Seen from outside, the left wall has the front of the box on the right, so y
+    # mirrors there; the right wall reads the other way round.
+    def px(y_inside: float) -> float:
+        return ow - (y_inside + dy) if side == "power" else y_inside + dy
+
+    svg = Svg(ow, oh, f"LumosAir — {'left' if side == 'power' else 'right'} end wall")
     svg.rect(0.15, 0.15, ow - 0.3, oh - 0.3, ENGRAVE, 0.2, rx=3)
-    cx, cy = enc.GLAND_Y + dy, oh - (enc.GLAND_Z + dz)
-    svg.circle(cx, cy, enc.GLAND_DIA / 2)
-    svg.text(cx, cy + enc.GLAND_DIA / 2 + 5.0, "5 V IN", size=3.2)
-    svg.save(out / "panel_end.svg")
+    cx, cy = px(enc.USBC_Y), oh - (enc.USBC_Z + dz)
+    svg.circle(cx, cy, enc.USBC_HOLE / 2)
+    for sy_, sz_ in enc.USBC_SCREWS:
+        svg.circle(px(enc.USBC_Y + sy_), oh - (enc.USBC_Z + sz_ + dz), enc.USBC_SCREW_DIA / 2)
+    fw, fh = enc.USBC_FLANGE
+    svg.rect(cx - fw / 2, cy - fh / 2, fw, fh, "#9a9a9a", 0.15, rx=2)       # flange witness
+    tx = cx + fw / 2 + 4.0 if cx + fw / 2 + 30 < ow else cx - fw / 2 - 4.0
+    anchor = "start" if tx > cx else "end"
+    svg.text(tx, cy - 1.0, label, size=4.2, anchor=anchor)
+    svg.text(tx, cy + 4.5, sub, size=2.4, anchor=anchor, weight="400")
+    svg.save(out / fname)
 
 
 def drill_template(populate: str, out: Path, box_code: str, mcu: str, fittings: str) -> None:
@@ -150,10 +162,7 @@ def drill_template(populate: str, out: Path, box_code: str, mcu: str, fittings: 
         svg.circle(cx, cy, enc.PORT_DIA / 2)
         svg.line(cx - 5, cy, cx + 5, cy, ENGRAVE, 0.1)
         svg.line(cx, cy - 5, cx, cy + 5, ENGRAVE, 0.1)
-    cx, cy = ol - (box.inside[0] / 2 + dx), oh - (d.switch_z + dz)
-    svg.circle(cx, cy, enc.SWITCH_DIA / 2)
-    svg.line(cx - 5, cy, cx + 5, cy, ENGRAVE, 0.1)
-    svg.line(cx, cy - 5, cx, cy + 5, ENGRAVE, 0.1)
+
     svg.text(ol / 2, oh - 3, "1:1 — check this measures 100 mm across before drilling",
              size=2.6, weight="400", fill="#808080")
     svg.line(ol / 2 - 50, oh - 8, ol / 2 + 50, oh - 8, ENGRAVE, 0.3)
@@ -190,7 +199,8 @@ def main() -> int:
     code = enc.pick_box("laser", a.mcu, a.fittings) if a.box == "auto" else a.box
     for populate in ("laser", "fan"):
         panel_front(populate, out, code, a.mcu, a.fittings)
-    panel_end(out, code, a.mcu, a.fittings)
+    for side in ("power", "fan"):
+        panel_end(side, out, code, a.mcu, a.fittings)
     drill_template("laser", out, code, a.mcu, a.fittings)
     board_outlines(out, code, a.mcu, a.fittings)
     return 0
